@@ -1,0 +1,32 @@
+id: SAFE-T1605
+name: 'SAFE-T1605: Capability Mapping'
+severity: high
+summary: |-
+  Capability mapping when internal tool lists, privileges, or endpoints are exposed
+  to untrusted users or tool outputs.
+description: |-
+  Tactic: Discovery (ATK-TA0007). Technique: SAFE-T1605. Severity: high.
+  Detection guidance:
+  - Require a user-accessible response that enumerates tools, capabilities, or
+    privileged endpoints beyond what the user should see.
+  - Confirm the enumeration is explicit (returned list, schema, or documentation), not
+    inferred via behavior or error messages.
+  Exclusions:
+  - Do not flag internal configuration maps that are not exposed or returned.
+mitigations: []
+code_signals:
+- id: SAFE-T1605-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1605*'
+  - pattern: '*capability*'
+  - pattern: '*mapping*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

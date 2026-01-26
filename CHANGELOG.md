@@ -1,6 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# scanner-intellij Changelog
+# Scan The Planet Changelog
 
 ## [Unreleased]
 ### Added

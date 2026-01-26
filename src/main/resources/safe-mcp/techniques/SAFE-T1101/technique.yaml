@@ -1,0 +1,30 @@
+id: SAFE-T1101
+name: 'SAFE-T1101: Command Injection'
+severity: high
+summary: '**Tactic**: Execution (ATK-TA0002), Initial Access (ATK-TA0001)'
+description: '**Tactic**: Execution (ATK-TA0002), Initial Access (ATK-TA0001). Command injection occurs when untrusted input is used to build or invoke system commands (shell, exec, subprocess, ProcessBuilder, Runtime.exec, etc.). This technique is about OS command execution, not network SSRF or untrusted URL fetches. Findings should require evidence of user/attacker-controlled input reaching a command invocation without proper validation or safe argument handling.'
+mitigations: []
+code_signals:
+- id: SAFE-T1101-signal-1
+  description: Indicators of untrusted input reaching command execution APIs or shell invocation.
+  heuristics:
+  - pattern: '*os.system*'
+  - pattern: '*subprocess*'
+  - pattern: '*shell*'
+  - pattern: '*Runtime.getRuntime().exec*'
+  - pattern: '*ProcessBuilder*'
+  - pattern: '*exec(*'
+  - pattern: '*cmd*'
+  - pattern: '*bash*'
+  - pattern: '*sh -c*'
+  - pattern: '*powershell*'
+  - pattern: '*command*'
+  - pattern: '*injection*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

@@ -1,0 +1,27 @@
+id: SAFE-T1103
+name: 'SAFE-T1103: Fake Tool Invocation (Function Spoofing)'
+severity: critical
+summary: '**Technique ID:** SAFE-T1103 **Technique Name:** Fake Tool Invocation (Function
+  Spoofing) **Tactic:** Execution (ATK-TA0002) **MITRE ATT&CK Mapping:** [T1574 -
+  Hijack Execution…'
+description: '**Technique ID:** SAFE-T1103 **Technique Name:** Fake Tool Invocation
+  (Function Spoofing) **Tactic:** Execution (ATK-TA0002) **MITRE ATT&CK Mapping:**
+  [T1574 - Hijack Execution…'
+mitigations: []
+code_signals:
+- id: SAFE-T1103-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1103*'
+  - pattern: '*fake*'
+  - pattern: '*invocation*'
+  - pattern: '*function*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

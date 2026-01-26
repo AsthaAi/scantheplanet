@@ -1,0 +1,26 @@
+id: SAFE-T1003
+name: 'SAFE-T1003: Malicious MCP-Server Distribution'
+severity: high
+summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1003 **Severity**:
+  Critical **First Observed**: 2025-03-15 (First documented trojanized Docker images)
+  **Last Updated**: 2025-09-14'
+description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1003
+  **Severity**: Critical **First Observed**: 2025-03-15 (First documented trojanized
+  Docker images) **Last Updated**: 2025-09-14'
+mitigations: []
+code_signals:
+- id: SAFE-T1003-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1003*'
+  - pattern: '*malicious*'
+  - pattern: '*distribution*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

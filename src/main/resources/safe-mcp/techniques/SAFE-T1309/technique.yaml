@@ -1,0 +1,20 @@
+id: SAFE-T1309
+name: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
+severity: high
+summary: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
+description: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
+mitigations: []
+code_signals:
+- id: SAFE-T1309-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1309*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

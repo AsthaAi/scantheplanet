@@ -1,0 +1,24 @@
+id: SAFE-T1104
+name: 'SAFE-T1104: Over-Privileged Tool Abuse'
+severity: high
+summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1104 **Severity**:
+  High **First Observed**: March 2024 (Theoretical research on MCP privilege models)
+  **Last Updated**: 2025-01-15'
+description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1104 **Severity**:
+  High **First Observed**: March 2024 (Theoretical research on MCP privilege models)
+  **Last Updated**: 2025-01-15'
+mitigations: []
+code_signals:
+- id: SAFE-T1104-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1104*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

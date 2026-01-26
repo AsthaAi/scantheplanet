@@ -1,0 +1,26 @@
+id: SAFE-T1111
+name: 'SAFE-T1111: AI Agent CLI Weaponization'
+severity: critical
+summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1111 **Severity**:
+  Critical **First Observed**: August 2025 (Nx malicious package incident) **Last
+  Updated**: 2025-08-27'
+description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1111 **Severity**:
+  Critical **First Observed**: August 2025 (Nx malicious package incident) **Last
+  Updated**: 2025-08-27'
+mitigations: []
+code_signals:
+- id: SAFE-T1111-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1111*'
+  - pattern: '*agent*'
+  - pattern: '*weaponization*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

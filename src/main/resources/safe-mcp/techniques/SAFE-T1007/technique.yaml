@@ -1,0 +1,26 @@
+id: SAFE-T1007
+name: 'SAFE-T1007: OAuth Authorization Phishing'
+severity: high
+summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1007 **Severity**:
+  Critical **First Observed**: May 2025 (Reported by Alibaba Cloud Security Team)
+  **Last Updated**: 2025-01-06'
+description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1007
+  **Severity**: Critical **First Observed**: May 2025 (Reported by Alibaba Cloud Security
+  Team) **Last Updated**: 2025-01-06'
+mitigations: []
+code_signals:
+- id: SAFE-T1007-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1007*'
+  - pattern: '*authorization*'
+  - pattern: '*phishing*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

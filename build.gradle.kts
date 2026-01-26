@@ -31,6 +31,16 @@ repositories {
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
+    implementation(libs.gson)
+    implementation(libs.jackson.annotations)
+    implementation(libs.jackson.core)
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin) {
+        exclude(group = "org.jetbrains.kotlin")
+    }
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.json.schema.validator)
+    implementation(libs.jtokkit)
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
 

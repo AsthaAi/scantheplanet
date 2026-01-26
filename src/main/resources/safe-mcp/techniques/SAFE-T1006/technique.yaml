@@ -1,0 +1,23 @@
+id: SAFE-T1006
+name: 'SAFE‑T1006: User‑Social‑Engineering Install (Improved)'
+severity: high
+summary: 'Tactic: Initial Access (ATK-TA0001) Technique ID: SAFE‑T1006 Severity: High
+  First Observed: (The concept is analogous to real-world supply-chain compromise;
+  no widely-publicized MCP-specific case yet) Last Updated:…'
+description: 'Tactic: Initial Access (ATK-TA0001) Technique ID: SAFE‑T1006 Severity:
+  High First Observed: (The concept is analogous to real-world supply-chain compromise;
+  no widely-publicized MCP-specific case yet) Last Updated:…'
+mitigations: []
+code_signals:
+- id: SAFE-T1006-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: tool.register
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

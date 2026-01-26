@@ -1,0 +1,34 @@
+id: SAFE-T1002
+name: 'SAFE-T1002: Supply Chain Compromise'
+severity: high
+summary: |-
+  Supply chain compromise when remote code or artifacts are fetched and trusted without
+  integrity verification, pinning, or signature checks.
+description: |-
+  Tactic: Initial Access (ATK-TA0001). Technique: SAFE-T1002. Severity: high.
+  Detection guidance:
+  - Look for code that downloads, installs, imports, or executes external packages,
+    plugins, model weights, or binaries without integrity checks or pinning.
+  - Require a concrete execution or load path (for example: pip/npm install from URL,
+    dynamic import from remote content, or downloaded code executed).
+  Exclusions:
+  - Do not flag read-only documentation fetches or API calls that do not execute or load code.
+  - Do not flag generic HTTP GET/POST calls unless the response is executed, imported, or loaded as code.
+mitigations: []
+code_signals:
+- id: SAFE-T1002-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1002*'
+  - pattern: '*supply*'
+  - pattern: '*chain*'
+  - pattern: '*compromise*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true
