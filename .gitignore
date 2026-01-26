@@ -4,4 +4,6 @@
 .intellijPlatform
 .kotlin
 .qodana
+*.iml
+out
 build
