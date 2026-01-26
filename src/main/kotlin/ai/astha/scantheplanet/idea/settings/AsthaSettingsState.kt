@@ -9,7 +9,6 @@ enum class ScanScope(val cliValue: String) {
 }
 
 enum class LlmProvider(val cliValue: String) {
-    LOCAL("local"),
     OPENAI("openai"),
     ANTHROPIC("anthropic"),
     GEMINI("gemini"),
@@ -26,7 +25,7 @@ data class AsthaSettingsState(
     @Attribute("includeUntracked")
     var includeUntracked: Boolean = true,
     @Attribute("provider")
-    var provider: LlmProvider = LlmProvider.LOCAL,
+    var provider: LlmProvider = LlmProvider.OPENAI,
     @Attribute("modelName")
     var modelName: String = "",
     @Attribute("configPath")

@@ -4,29 +4,32 @@
 [![Version](https://img.shields.io/jetbrains/plugin/v/29924.svg)](https://plugins.jetbrains.com/plugin/29924-scan-the-planet)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/29924.svg)](https://plugins.jetbrains.com/plugin/29924-scan-the-planet)
 
-## Template ToDo list
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [ ] Get familiar with the [template documentation][template].
-- [ ] Adjust the [pluginGroup](./gradle.properties) and [pluginName](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml) and [sources package](./src/main/kotlin).
-- [ ] Adjust the plugin description in `README` (see [Tips][docs:plugin-description])
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
-- [ ] Configure the [CODECOV_TOKEN](https://docs.codecov.com/docs/quick-start) secret for automated test coverage reports on PRs
-
 <!-- Plugin description -->
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
+Scan The Planet is an IntelliJ plugin that scans MCP (Model Context Protocol) servers and related code for security risks using the SAFE-MCP technique catalog. It can run against the current project, highlight findings, and optionally clean/merge overlapping findings with an LLM.
 
-This specific section is a source for the [plugin.xml](/src/main/resources/META-INF/plugin.xml) file which will be extracted by the [Gradle](/build.gradle.kts) during the build process.
-
-To keep everything working, do not remove `<!-- ... -->` sections. 
+Key capabilities:
+- SAFE-MCP technique scanning (rules + LLM analysis)
+- Git diff or full-repo scan scope
+- Provider support: OpenAI or Ollama
+- Optional LLM-based findings cleaning and scan caching
 <!-- Plugin description end -->
 
-## Installation
+## Quick start
+1. Open **Settings/Preferences → Scan The Planet**.
+2. Choose a provider (or **local** for rules-only).
+3. Set **Model name** and **LLM token** if using a remote provider.
+4. (Optional) Enable **Clean findings with LLM** to reduce overlaps.
+5. Run **Scan** from the IDE action or toolbar.
 
+## Configuration
+- **Provider**: `local`, `openai`, `anthropic`, `gemini`, `ollama`.
+- **Model name**: Passed to the selected provider.
+- **Config path**: Optional YAML/JSON scanner config.
+- **LLM endpoint**: Used for Ollama; ignored for other providers.
+- **Batch mode**: Enable multi-technique prompts.
+- **Scan cache**: Speeds up repeated scans; clear cache if prompts change.
+
+## Installation
 - Using the IDE built-in plugin system:
 
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "Scan The Planet"</kbd> >
@@ -44,9 +47,7 @@ To keep everything working, do not remove `<!-- ... -->` sections.
   Download the [latest release](https://github.com/asthaai/scantheplanet/releases/latest) and install it manually using
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
 
-
 ---
 Plugin based on the [IntelliJ Platform Plugin Template][template].
 
 [template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation

@@ -61,12 +61,15 @@ class ScannerService(private val project: Project) {
             logService.log(MyBundle.message("scanStarted", "project", project.name, timestamp()))
             reportService.update(ScanReport("running", "Scan in progress...", emptyList(), null))
 
-            val provider = settings.provider.cliValue
-            if (provider != LlmProvider.LOCAL.cliValue) {
-                val allowed = (config.allowedProviders ?: emptyList()).toMutableSet()
-                allowed.add(provider)
-                config = config.copy(allowRemoteProviders = true, allowedProviders = allowed.toList())
+            var provider = settings.provider.cliValue
+            val supportedProviders = setOf(LlmProvider.OPENAI.cliValue, LlmProvider.OLLAMA.cliValue)
+            if (provider !in supportedProviders) {
+                logService.log("Provider $provider is currently disabled; falling back to OpenAI.")
+                provider = LlmProvider.OPENAI.cliValue
             }
+            val allowed = (config.allowedProviders ?: emptyList()).toMutableSet()
+            allowed.add(provider)
+            config = config.copy(allowRemoteProviders = true, allowedProviders = allowed.toList())
             val endpointOverride = settings.llmEndpoint.trim().ifBlank { null }
             if (provider == LlmProvider.OLLAMA.cliValue) {
                 if (!endpointOverride.isNullOrBlank()) {

@@ -12,8 +12,8 @@ object ModelFactory {
         config: ScannerConfig
     ): CodeModel {
         val normalized = provider.lowercase()
-        if (normalized == "local") {
-            return LocalModel()
+        if (normalized !in setOf("openai", "ollama")) {
+            throw IllegalArgumentException("provider $normalized is disabled in this build")
         }
         if (normalized == "ollama") {
             enforceProviderAllowlist(config, normalized)
@@ -51,7 +51,7 @@ object ModelFactory {
     }
 
     private fun enforceProviderAllowlist(config: ScannerConfig, provider: String) {
-        if (provider == "local" || provider == "ollama") return
+        if (provider == "ollama") return
         if (!config.allowRemoteProviders) {
             throw IllegalArgumentException("provider $provider disallowed: allow_remote_providers=false")
         }
@@ -63,11 +63,11 @@ object ModelFactory {
 
     private fun defaultModelForProvider(provider: String): String {
         return when (provider) {
-            "openai" -> "gpt-4o-mini"
+            "openai" -> "gpt-5.2"
             "anthropic" -> "claude-3-5-sonnet-20240620"
             "gemini" -> "gemini-1.5-flash"
             "ollama" -> "llama3.1"
-            else -> "local"
+            else -> "gpt-5.2"
         }
     }
 }

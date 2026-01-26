@@ -56,7 +56,7 @@ private class AsthaSettingsForm(private val project: Project) {
     private val techniqueList = JBList(loadTechniqueIds())
     private val scopeBox = JComboBox(ScanScope.entries.toTypedArray())
     private val includeUntrackedBox = JBCheckBox("Include untracked files (git diff)")
-    private val providerBox = JComboBox(LlmProvider.entries.toTypedArray())
+    private val providerBox = JComboBox(listOf(LlmProvider.OPENAI, LlmProvider.OLLAMA).toTypedArray())
     private val modelNameField = JBTextField()
     private val configPathField = JBTextField()
     private val endpointField = JBTextField()
