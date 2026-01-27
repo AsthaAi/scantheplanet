@@ -61,6 +61,7 @@ private class AsthaSettingsForm(private val project: Project) {
     private val configPathField = JBTextField()
     private val endpointField = JBTextField()
     private val tokenField = JBPasswordField()
+    private val clearTokenButton = JButton("Clear token")
     private val batchEnabledBox = JBCheckBox("Enable batch mode (multi-technique prompts)")
     private val batchSizeField = JBTextField()
     private val cleanFindingsBox = JBCheckBox("Clean findings with LLM")
@@ -77,6 +78,7 @@ private class AsthaSettingsForm(private val project: Project) {
         .addLabeledComponent("Config path", configPathField)
         .addLabeledComponent("LLM endpoint", endpointField)
         .addLabeledComponent("LLM token", tokenField)
+        .addComponent(clearTokenButton)
         .addComponent(batchEnabledBox)
         .addLabeledComponent("Batch size", batchSizeField)
         .addComponent(cleanFindingsBox)
@@ -119,6 +121,12 @@ private class AsthaSettingsForm(private val project: Project) {
             }
             Messages.showInfoMessage(panel, message, "Scan The Planet")
         }
+        clearTokenButton.addActionListener {
+            val provider = providerBox.selectedItem as? LlmProvider ?: LlmProvider.OPENAI
+            project.getService(AsthaSettingsService::class.java).saveLlmToken(provider.cliValue, null)
+            tokenField.text = ""
+            Messages.showInfoMessage(panel, "LLM token cleared.", "Scan The Planet")
+        }
     }
 
     private fun updateCleaningFieldsEnabled() {
@@ -134,7 +142,7 @@ private class AsthaSettingsForm(private val project: Project) {
         modelNameField.text = state.modelName
         configPathField.text = state.configPath
         endpointField.text = state.llmEndpoint
-        tokenField.text = state.llmToken
+        tokenField.text = ""
         batchEnabledBox.isSelected = state.batchEnabled
         batchSizeField.text = state.batchSize.toString()
         cleanFindingsBox.isSelected = state.cleanFindings
@@ -147,11 +155,16 @@ private class AsthaSettingsForm(private val project: Project) {
         state.techniques = selectedTechniques()
         state.scope = scopeBox.selectedItem as? ScanScope ?: ScanScope.GIT_DIFF
         state.includeUntracked = includeUntrackedBox.isSelected
-        state.provider = providerBox.selectedItem as? LlmProvider ?: LlmProvider.LOCAL
+        state.provider = providerBox.selectedItem as? LlmProvider ?: LlmProvider.OPENAI
         state.modelName = modelNameField.text.trim()
         state.configPath = configPathField.text.trim()
         state.llmEndpoint = endpointField.text.trim()
-        state.llmToken = String(tokenField.password)
+        val token = String(tokenField.password).trim()
+        if (token.isNotEmpty()) {
+            project.getService(AsthaSettingsService::class.java).saveLlmToken(state.provider.cliValue, token)
+        }
+        tokenField.text = ""
+        state.llmToken = ""
         state.batchEnabled = batchEnabledBox.isSelected
         state.batchSize = batchSizeField.text.trim().toIntOrNull()?.coerceIn(1, 20) ?: state.batchSize
         state.cleanFindings = cleanFindingsBox.isSelected
@@ -167,7 +180,7 @@ private class AsthaSettingsForm(private val project: Project) {
             modelNameField.text.trim() != state.modelName ||
             configPathField.text.trim() != state.configPath ||
             endpointField.text.trim() != state.llmEndpoint ||
-            String(tokenField.password) != state.llmToken ||
+            String(tokenField.password).isNotBlank() ||
             batchEnabledBox.isSelected != state.batchEnabled ||
             batchSizeField.text.trim() != state.batchSize.toString() ||
             cleanFindingsBox.isSelected != state.cleanFindings ||

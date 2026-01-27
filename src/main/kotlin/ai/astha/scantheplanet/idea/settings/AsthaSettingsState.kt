@@ -2,10 +2,14 @@ package ai.astha.scantheplanet.idea.settings
 
 import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.XCollection
+import com.intellij.util.xmlb.annotations.Transient
 
-enum class ScanScope(val cliValue: String) {
-    GIT_DIFF("git-diff"),
-    FULL("full")
+enum class ScanScope(val cliValue: String, private val label: String) {
+    OPEN_FILES("open-files", "Open files"),
+    GIT_DIFF("git-diff", "Git diff"),
+    FULL("full", "Full project");
+
+    override fun toString(): String = label
 }
 
 enum class LlmProvider(val cliValue: String) {
@@ -21,7 +25,7 @@ data class AsthaSettingsState(
     @Attribute("techniqueId")
     var legacyTechniqueId: String? = null,
     @Attribute("scope")
-    var scope: ScanScope = ScanScope.GIT_DIFF,
+    var scope: ScanScope = ScanScope.OPEN_FILES,
     @Attribute("includeUntracked")
     var includeUntracked: Boolean = true,
     @Attribute("provider")
@@ -32,7 +36,7 @@ data class AsthaSettingsState(
     var configPath: String = "",
     @Attribute("llmEndpoint")
     var llmEndpoint: String = "",
-    @Attribute("llmToken")
+    @Transient
     var llmToken: String = "",
     @Attribute("batchEnabled")
     var batchEnabled: Boolean = true,
@@ -43,5 +47,7 @@ data class AsthaSettingsState(
     @Attribute("cleaningModelName")
     var cleaningModelName: String = "",
     @Attribute("cacheEnabled")
-    var cacheEnabled: Boolean = true
+    var cacheEnabled: Boolean = true,
+    @Attribute("suppressTokenWarning")
+    var suppressTokenWarning: Boolean = false
 )

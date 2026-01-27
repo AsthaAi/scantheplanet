@@ -38,7 +38,15 @@ import javax.swing.text.BadLocationException
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.vfs.LocalFileSystem
+import ai.astha.scantheplanet.idea.settings.AsthaSettingsConfigurable
+import ai.astha.scantheplanet.idea.settings.AsthaSettingsService
+import ai.astha.scantheplanet.idea.settings.LlmProvider
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.util.ui.UIUtil
+import java.awt.FlowLayout
 
 class ScannerToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
@@ -50,9 +58,11 @@ class ScannerToolWindowFactory : ToolWindowFactory {
     override fun shouldBeAvailable(project: Project) = true
 }
 
-private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWindowPanel>(BorderLayout()) {
+private class ScannerToolWindowPanel(private val project: Project) : JBPanel<ScannerToolWindowPanel>(BorderLayout()) {
     private val logArea = JBTextArea()
     private val scanButton = JButton(MyBundle.message("scanProject"))
+    private val tokenNoticeLabel = JBLabel(MyBundle.message("scanTokenNotice"))
+    private val stopButton = JButton("Stop")
     private val copyAllButton = JButton("Copy all")
     private val copyCsvButton = JButton("Copy CSV")
     private val clearButton = JButton("Clear")
@@ -78,6 +88,8 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
     private val centerCardLayout = CardLayout()
     private val centerCardPanel = JBPanel<JBPanel<*>>(centerCardLayout)
     private val progressPanel = JBPanel<JBPanel<*>>(BorderLayout())
+    private var tokenConfigured: Boolean? = null
+    private var tokenCheckInFlight: Boolean = false
 
     init {
         logArea.isEditable = false
@@ -115,7 +127,18 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
 
         add(headerPanel, BorderLayout.NORTH)
         add(splitPane, BorderLayout.CENTER)
-        add(scanButton, BorderLayout.SOUTH)
+        val scanPanel = JBPanel<JBPanel<*>>(BorderLayout())
+        val scanButtonsPanel = JBPanel<JBPanel<*>>(FlowLayout(FlowLayout.LEFT, 6, 0))
+        val noticePanel = JBPanel<JBPanel<*>>(FlowLayout(FlowLayout.RIGHT, 6, 0))
+        tokenNoticeLabel.font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL)
+        tokenNoticeLabel.foreground = JBColor.GRAY
+        noticePanel.add(tokenNoticeLabel)
+        stopButton.isEnabled = false
+        scanButtonsPanel.add(scanButton)
+        scanButtonsPanel.add(stopButton)
+        scanPanel.add(scanButtonsPanel, BorderLayout.CENTER)
+        scanPanel.add(noticePanel, BorderLayout.SOUTH)
+        add(scanPanel, BorderLayout.SOUTH)
 
         val logService = project.service<ai.astha.scantheplanet.idea.services.ScanLogService>()
         logService.snapshot().forEach { appendLog(it) }
@@ -167,8 +190,20 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
         })
 
         val scannerService = project.service<ScannerService>()
+        updateScanButton()
         scanButton.addActionListener {
-            scannerService.scanProject()
+            appendLog("Scan button clicked.")
+            if (!isConfigured()) {
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, AsthaSettingsConfigurable::class.java)
+                refreshTokenConfigured()
+                updateScanButton()
+            } else if (confirmTokenUsage()) {
+                scannerService.scanProject()
+            }
+        }
+        stopButton.addActionListener {
+            appendLog("Stop button clicked.")
+            scannerService.cancelScan()
         }
         copyAllButton.addActionListener {
             copyAllToClipboard()
@@ -180,6 +215,78 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
             logService.clear()
             reportService.clear()
         }
+    }
+
+    private fun isConfigured(): Boolean {
+        val settingsService = project.service<AsthaSettingsService>()
+        val settings = settingsService.state
+        if (settings.provider == LlmProvider.OPENAI) {
+            val cached = tokenConfigured
+            if (cached == null) {
+                refreshTokenConfigured()
+                return false
+            }
+            return cached
+        }
+        if (settings.provider == LlmProvider.OLLAMA) {
+            return true
+        }
+        return false
+    }
+
+    private fun updateScanButton() {
+        val label = if (isConfigured()) {
+            MyBundle.message("scanProject")
+        } else {
+            MyBundle.message("scanConfigure")
+        }
+        scanButton.text = label
+        tokenNoticeLabel.isVisible = isConfigured()
+    }
+
+    private fun refreshTokenConfigured() {
+        val settingsService = project.service<AsthaSettingsService>()
+        val provider = settingsService.state.provider
+        if (provider != LlmProvider.OPENAI) {
+            tokenConfigured = null
+            return
+        }
+        if (tokenCheckInFlight) return
+        tokenCheckInFlight = true
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val hasToken = settingsService.hasLlmToken(provider.cliValue)
+            ApplicationManager.getApplication().invokeLater {
+                tokenConfigured = hasToken
+                tokenCheckInFlight = false
+                updateScanButton()
+            }
+        }
+    }
+
+    private fun confirmTokenUsage(): Boolean {
+        val settings = project.service<AsthaSettingsService>().state
+        if (settings.suppressTokenWarning) return true
+        val option = object : DialogWrapper.DoNotAskOption.Adapter() {
+            override fun rememberChoice(isSelected: Boolean, exitCode: Int) {
+                if (isSelected) {
+                    settings.suppressTokenWarning = true
+                }
+            }
+
+            override fun getDoNotShowMessage(): String {
+                return MyBundle.message("scanTokenDialogDontShow")
+            }
+        }
+        val result = Messages.showYesNoDialog(
+            project,
+            MyBundle.message("scanTokenDialogMessage"),
+            MyBundle.message("scanTokenDialogTitle"),
+            Messages.getYesButton(),
+            Messages.getNoButton(),
+            null,
+            option
+        )
+        return result == Messages.YES
     }
 
     private fun appendLog(message: String) {
@@ -201,6 +308,9 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
 
     private fun updateReport(report: ScanReport) {
         runOnEdt {
+            val running = report.status == "running"
+            stopButton.isEnabled = running
+            scanButton.isEnabled = !running
             tableModel.setRowCount(0)
             currentFindings = report.findings
             if (report.status.isBlank() && report.summary.isBlank() && report.findings.isEmpty()) {
@@ -213,7 +323,13 @@ private class ScannerToolWindowPanel(project: Project) : JBPanel<ScannerToolWind
                 progressRows.clear()
                 currentProgressKey = null
                 lastReportStatus = null
+                stopButton.isEnabled = false
+                scanButton.isEnabled = true
+                updateScanButton()
                 return@runOnEdt
+            }
+            if (!running) {
+                updateScanButton()
             }
             statusLabel.text = "Status: ${report.status} — ${report.summary}"
             if (lastReportStatus != report.status && report.status == "running") {

@@ -8,17 +8,20 @@ import ai.astha.scantheplanet.idea.scanner.SafeMcpRepository
 import ai.astha.scantheplanet.idea.scanner.ScanProgress
 import ai.astha.scantheplanet.idea.scanner.ScannerConfigLoader
 import ai.astha.scantheplanet.idea.scanner.ScopeKind
+import ai.astha.scantheplanet.idea.scanner.ScannerUtils
 import ai.astha.scantheplanet.idea.settings.AsthaSettingsService
 import ai.astha.scantheplanet.idea.settings.LlmProvider
 import ai.astha.scantheplanet.idea.settings.ScanScope
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.nio.file.Path
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Service(Service.Level.PROJECT)
 class ScannerService(private val project: Project) {
@@ -26,15 +29,22 @@ class ScannerService(private val project: Project) {
     private val reportService = project.getService(ScanReportService::class.java)
     private val executor = AppExecutorUtil.getAppExecutorService()
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    @Volatile private var cancelFlag: AtomicBoolean? = null
 
     fun scanProject() {
+        val existing = cancelFlag
+        if (existing != null && !existing.get()) {
+            logService.log("Scan already running.")
+            return
+        }
         val projectBasePath = project.basePath
         if (projectBasePath == null) {
             logService.log(MyBundle.message("scanProjectMissingBasePath"))
             return
         }
 
-        val settings = project.getService(AsthaSettingsService::class.java).state
+        val settingsService = project.getService(AsthaSettingsService::class.java)
+        val settings = settingsService.state
         val techniques = settings.techniques.takeIf { it.isNotEmpty() } ?: mutableListOf("SAFE-T0001")
         val safeMcpRepository = SafeMcpRepository()
         val configPath = settings.configPath.trim().takeIf { it.isNotEmpty() }?.let { Path.of(expandHome(it)) }
@@ -47,8 +57,45 @@ class ScannerService(private val project: Project) {
         } else {
             null
         }
+        var gitDiffCount: Int? = null
         val scope = when {
-            desiredScope == ScanScope.GIT_DIFF && hasGitRepo && baseRef != null -> ScopeKind.GitDiff(baseRef, settings.includeUntracked)
+            desiredScope == ScanScope.OPEN_FILES -> {
+                val openFiles = openProjectFiles(projectBasePath)
+                if (openFiles.isEmpty()) {
+                    logService.clear()
+                    reportService.clear()
+                    logService.log("No open files to scan.")
+                    ApplicationManager.getApplication().invokeLater {
+                        com.intellij.openapi.ui.Messages.showWarningDialog(
+                            project,
+                            "No open files to scan. Open a file or change the scan scope.",
+                            "Scan The Planet"
+                        )
+                    }
+                    reportService.update(ScanReport("unknown", "No open files to scan.", emptyList(), null))
+                    return
+                }
+                ScopeKind.OpenFiles(openFiles)
+            }
+            desiredScope == ScanScope.GIT_DIFF && hasGitRepo && baseRef != null -> {
+                val changedFiles = ScannerUtils.gitChangedFiles(Path.of(projectBasePath), baseRef, settings.includeUntracked)
+                if (changedFiles.isEmpty()) {
+                    logService.clear()
+                    reportService.clear()
+                    logService.log("No changed files to scan.")
+                    ApplicationManager.getApplication().invokeLater {
+                        com.intellij.openapi.ui.Messages.showWarningDialog(
+                            project,
+                            "No changed files to scan. Make a change or switch the scan scope.",
+                            "Scan The Planet"
+                        )
+                    }
+                    reportService.update(ScanReport("unknown", "No changed files to scan.", emptyList(), null))
+                    return
+                }
+                gitDiffCount = changedFiles.size
+                ScopeKind.GitDiff(baseRef, settings.includeUntracked)
+            }
             desiredScope == ScanScope.GIT_DIFF -> ScopeKind.FullRepo
             else -> ScopeKind.FullRepo
         }
@@ -56,7 +103,16 @@ class ScannerService(private val project: Project) {
         logService.clear()
         reportService.clear()
         logService.log(MyBundle.message("scanQueued", "project", project.name))
+        logService.log("Scan configuration: scope=${settings.scope} provider=${settings.provider.cliValue} techniques=${techniques.size}")
+        if (scope is ScopeKind.OpenFiles) {
+            logService.log("Open files: ${scope.files.size}")
+        }
+        if (scope is ScopeKind.GitDiff && gitDiffCount != null) {
+            logService.log("Git diff files: $gitDiffCount")
+        }
 
+        val localCancel = AtomicBoolean(false)
+        cancelFlag = localCancel
         executor.execute {
             logService.log(MyBundle.message("scanStarted", "project", project.name, timestamp()))
             reportService.update(ScanReport("running", "Scan in progress...", emptyList(), null))
@@ -67,6 +123,7 @@ class ScannerService(private val project: Project) {
                 logService.log("Provider $provider is currently disabled; falling back to OpenAI.")
                 provider = LlmProvider.OPENAI.cliValue
             }
+            logService.log("Resolved provider: $provider")
             val allowed = (config.allowedProviders ?: emptyList()).toMutableSet()
             allowed.add(provider)
             config = config.copy(allowRemoteProviders = true, allowedProviders = allowed.toList())
@@ -74,6 +131,7 @@ class ScannerService(private val project: Project) {
             if (provider == LlmProvider.OLLAMA.cliValue) {
                 if (!endpointOverride.isNullOrBlank()) {
                     config = config.copy(ollamaEndpoint = endpointOverride)
+                    logService.log("Ollama endpoint override: ${config.ollamaEndpoint}")
                 }
             } else if (!endpointOverride.isNullOrBlank()) {
                 logService.log(MyBundle.message("scanEndpointUnsupported", provider))
@@ -84,8 +142,9 @@ class ScannerService(private val project: Project) {
                 null
             }
             val scanner = NativeScanner(safeMcpRepository, config, cache)
-            val apiKey = settings.llmToken.trim().ifBlank { null }
+            val apiKey = settingsService.getLlmToken(provider).orEmpty().trim().ifBlank { null }
             val modelName = settings.modelName.trim().ifBlank { null }
+            logService.log("Model: ${modelName ?: "default"}")
             val report = try {
                 var lastProgress: ScanProgress? = null
                 val progressHandler: (ScanProgress) -> Unit = { progress ->
@@ -102,6 +161,7 @@ class ScannerService(private val project: Project) {
                     provider,
                     modelName,
                     apiKey,
+                    cancelRequested = { localCancel.get() },
                     progress = progressHandler,
                     batchEnabled = settings.batchEnabled,
                     batchSize = settings.batchSize
@@ -148,14 +208,30 @@ class ScannerService(private val project: Project) {
                     },
                     doneProgress
                 )
+            } catch (e: ai.astha.scantheplanet.idea.scanner.ScanCancelledException) {
+                logService.log("Scan cancelled.")
+                ScanReport("cancelled", "Scan cancelled.", emptyList(), null)
             } catch (e: Exception) {
                 logService.log("Scan failed: ${e.message ?: "unknown error"}")
                 ScanReport("unknown", "Scan failed", emptyList(), null)
+            } finally {
+                cancelFlag = null
             }
 
             reportService.update(report)
             logService.log(formatReport(report))
             logService.log(MyBundle.message("scanFinished", "project", project.name, timestamp()))
+        }
+    }
+
+    fun cancelScan() {
+        val current = cancelFlag ?: return
+        if (current.get()) return
+        current.set(true)
+        logService.log("Scan cancellation requested.")
+        val snapshot = reportService.snapshot()
+        if (snapshot != null && snapshot.status == "running") {
+            reportService.update(snapshot.copy(summary = "Cancelling scan..."))
         }
     }
 
@@ -225,6 +301,19 @@ class ScannerService(private val project: Project) {
         } else {
             path
         }
+    }
+
+    private fun openProjectFiles(projectBasePath: String): List<Path> {
+        val basePath = Path.of(projectBasePath)
+        val openFiles = FileEditorManager.getInstance(project).openFiles
+        return openFiles.mapNotNull { file ->
+            val path = file.toNioPath()
+            if (path.startsWith(basePath)) {
+                path
+            } else {
+                null
+            }
+        }.distinct()
     }
 
 

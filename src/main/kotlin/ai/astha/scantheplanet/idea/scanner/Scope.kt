@@ -6,6 +6,7 @@ sealed class ScopeKind {
     object FullRepo : ScopeKind()
     data class File(val file: Path) : ScopeKind()
     data class Selection(val file: Path, val startLine: Int, val endLine: Int) : ScopeKind()
+    data class OpenFiles(val files: List<Path>) : ScopeKind()
     data class GitDiff(val baseRef: String, val includeUntracked: Boolean) : ScopeKind()
 }
 

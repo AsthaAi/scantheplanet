@@ -28,6 +28,7 @@ class NativeScanner(
         modelName: String?,
         apiKey: String?,
         maxLinesPerChunk: Int = 200,
+        cancelRequested: (() -> Boolean)? = null,
         progress: ((ScanProgress) -> Unit)? = null,
         batchEnabled: Boolean = true,
         batchSize: Int = 3
@@ -58,11 +59,13 @@ class NativeScanner(
         var filesScannedTotal = 0
         var chunksAnalyzedTotal = 0
         var chunksFailedTotal = 0
+        val shouldCancel = cancelRequested ?: { false }
 
         if (batchEnabled) {
             val batches = techniqueIds.chunked(batchSize.coerceAtLeast(1))
             val totalBatches = batches.size
             for ((batchIndex, batchIds) in batches.withIndex()) {
+                if (shouldCancel()) throw ScanCancelledException()
                 val techniques = batchIds.mapNotNull { id ->
                     val normalized = normalizeTechniqueId(id)
                     validated[normalized] ?: loadTechnique(normalized)
@@ -76,11 +79,12 @@ class NativeScanner(
                     techniqueNames.putIfAbsent(tech.id, tech.name)
                 }
 
-                val filters = buildFilters(config)
+                val filters = adjustFiltersForScope(buildFilters(config), scope)
                 val files = when (scope) {
                     is ScopeKind.FullRepo -> ScannerUtils.collectFiles(repoPath, filters)
                     is ScopeKind.File -> listOf(scope.file)
                     is ScopeKind.Selection -> listOf(scope.file)
+                    is ScopeKind.OpenFiles -> scope.files
                     is ScopeKind.GitDiff -> {
                         val changed = ScannerUtils.gitChangedFiles(repoPath, scope.baseRef, scope.includeUntracked)
                         changed.toList()
@@ -101,6 +105,7 @@ class NativeScanner(
                     filters,
                     model,
                     diffAddedLines,
+                    shouldCancel,
                     progress,
                     gatingByTechnique,
                     batchLabel,
@@ -134,6 +139,7 @@ class NativeScanner(
         } else {
             val totalTechniques = techniqueIds.size
             for ((index, techniqueId) in techniqueIds.withIndex()) {
+                if (shouldCancel()) throw ScanCancelledException()
                 val technique = validated[normalizeTechniqueId(techniqueId)] ?: loadTechnique(techniqueId)
                 if (technique == null) {
                     summaries.add("$techniqueId: technique not found")
@@ -141,11 +147,12 @@ class NativeScanner(
                     continue
                 }
 
-                val filters = buildFilters(config)
+                val filters = adjustFiltersForScope(buildFilters(config), scope)
                 val files = when (scope) {
                     is ScopeKind.FullRepo -> ScannerUtils.collectFiles(repoPath, filters)
                     is ScopeKind.File -> listOf(scope.file)
                     is ScopeKind.Selection -> listOf(scope.file)
+                    is ScopeKind.OpenFiles -> scope.files
                     is ScopeKind.GitDiff -> {
                         val changed = ScannerUtils.gitChangedFiles(repoPath, scope.baseRef, scope.includeUntracked)
                         changed.toList()
@@ -165,6 +172,7 @@ class NativeScanner(
                     filters,
                     model,
                     diffAddedLines,
+                    shouldCancel,
                     progress,
                     technique.id,
                     technique.name,
@@ -247,6 +255,7 @@ class NativeScanner(
         filters: PathFilters,
         model: CodeModel,
         diffAddedLines: Map<Path, Set<Int>>,
+        cancelRequested: () -> Boolean,
         progress: ((ScanProgress) -> Unit)?,
         techniqueId: String,
         techniqueName: String,
@@ -269,6 +278,7 @@ class NativeScanner(
         val includeOverrideMatchers = filters.includeOverride.map { java.nio.file.FileSystems.getDefault().getPathMatcher("glob:$it") }
 
         for (file in files) {
+            if (cancelRequested()) throw ScanCancelledException()
             processedFiles += 1
             val relative = try { repoPath.relativize(file) } catch (_: Exception) { file }
             if (!ScannerUtils.isIncluded(relative, file, filters, includeMatchers, excludeMatchers, excludePatternMatchers, includeOverrideMatchers)) {
@@ -345,6 +355,7 @@ class NativeScanner(
             }
             RuleHints.applyRuleHints(technique, chunks)
             val modelFindings = chunks.flatMap { chunk ->
+                if (cancelRequested()) throw ScanCancelledException()
                 gatingStats?.totalChunks = (gatingStats?.totalChunks ?: 0) + 1
                 var shadowed = false
                 if (chunk.ruleHints.isEmpty() && !technique.llmRequired) {
@@ -469,6 +480,7 @@ class NativeScanner(
         filters: PathFilters,
         model: CodeModel,
         diffAddedLines: Map<Path, Set<Int>>,
+        cancelRequested: () -> Boolean,
         progress: ((ScanProgress) -> Unit)?,
         gatingByTechnique: MutableMap<String, GatingStats>,
         batchLabel: String,
@@ -491,6 +503,7 @@ class NativeScanner(
         val rng = java.util.Random()
 
         for (file in files) {
+            if (cancelRequested()) throw ScanCancelledException()
             processedFiles += 1
             val relative = try { repoPath.relativize(file) } catch (_: Exception) { file }
             if (!ScannerUtils.isIncluded(relative, file, filters, includeMatchers, excludeMatchers, excludePatternMatchers, includeOverrideMatchers)) {
@@ -562,6 +575,7 @@ class NativeScanner(
             }
 
             for (chunk in chunks) {
+                if (cancelRequested()) throw ScanCancelledException()
                 val hintsForChunk = eligibleTechniques.associate { tech -> tech.id to RuleHints.computeHints(tech, chunk) }
                 val activeTechniques = mutableListOf<ai.astha.scantheplanet.idea.scanner.prompt.TechniquePrompt>()
                 var gated = true
@@ -590,6 +604,7 @@ class NativeScanner(
                 }
 
                 for (tech in eligibleTechniques) {
+                    if (cancelRequested()) throw ScanCancelledException()
                     val hints = hintsForChunk[tech.id].orEmpty()
                     if (config.gatingEnabled == true && !tech.llmRequired && hints.isEmpty() && !shadowed) {
                         continue
@@ -975,6 +990,27 @@ class NativeScanner(
             excludePatterns = config.excludePatterns ?: emptyList(),
             onlyFiles = null
         )
+    }
+
+    private fun adjustFiltersForScope(filters: PathFilters, scope: ScopeKind): PathFilters {
+        return when (scope) {
+            is ScopeKind.OpenFiles, is ScopeKind.GitDiff -> {
+                // Focused scopes should respect the user's explicit file selection, not broad repo filters.
+                PathFilters(
+                    includeExtensions = emptyList(),
+                    excludeExtensions = emptyList(),
+                    includeGlobs = emptyList(),
+                    excludeGlobs = emptyList(),
+                    maxFileBytes = filters.maxFileBytes,
+                    excludeDocs = false,
+                    excludeTests = false,
+                    includeOverride = emptyList(),
+                    excludePatterns = emptyList(),
+                    onlyFiles = filters.onlyFiles
+                )
+            }
+            else -> filters
+        }
     }
 
     private fun truncateReadme(readme: String): String {
