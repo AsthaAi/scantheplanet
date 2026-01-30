@@ -1,0 +1,27 @@
+id: SAFE-T2102
+name: 'SAFE-T2102: Service Disruption via External API Flooding'
+severity: critical
+summary: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2102 **Severity**:
+  High **First Observed**: Not publicly reported in MCP production deployments (as
+  of 2025‑11‑09). Related real‑world analogs exist (e.g., ChatGPT…'
+description: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2102 **Severity**:
+  High **First Observed**: Not publicly reported in MCP production deployments (as
+  of 2025‑11‑09). Related real‑world analogs exist (e.g., ChatGPT…'
+mitigations: []
+code_signals:
+- id: SAFE-T2102-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t2102*'
+  - pattern: '*service*'
+  - pattern: '*disruption*'
+  - pattern: '*external*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

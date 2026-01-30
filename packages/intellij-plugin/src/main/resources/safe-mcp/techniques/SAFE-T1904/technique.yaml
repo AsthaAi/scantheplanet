@@ -1,0 +1,27 @@
+id: SAFE-T1904
+name: 'SAFE-T1904: Chat-Based Backchannel'
+severity: high
+summary: '**Tactic**: Command and Control (ATK-TA0011) **Technique ID**: SAFE-T1904
+  **Severity**: High **First Observed**: Not observed in production (documented as
+  theoretical but practically feasible pattern) **Last Updated**:…'
+description: '**Tactic**: Command and Control (ATK-TA0011) **Technique ID**: SAFE-T1904
+  **Severity**: High **First Observed**: Not observed in production (documented as
+  theoretical but practically feasible pattern) **Last Updated**:…'
+mitigations: []
+code_signals:
+- id: SAFE-T1904-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '```backchannel'
+  - pattern: 'BACKCHANNEL:'
+  - pattern: 'X-CTRL:'
+  - pattern: == backchannel ==
+  - pattern: YmFzaCAtYyAnY3VybCAtcyBodHRw
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

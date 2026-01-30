@@ -1,0 +1,25 @@
+id: SAFE-T3001
+name: SAFE-T3001 - RAG Backdoor Attack
+severity: high
+summary: '**Tactics:** Initial Access, Defense Evasion, Exfiltration, Impact **Technique
+  ID:** SAFE-T3001 **Status:** Stable (v1.0) **First Observed:** February 2024 (PoisonedRAG)
+  [1][2] **Last Updated:** 2025-11-11 **Author:**…'
+description: '**Tactics:** Initial Access, Defense Evasion, Exfiltration, Impact **Technique
+  ID:** SAFE-T3001 **Status:** Stable (v1.0) **First Observed:** February 2024 (PoisonedRAG)
+  [1][2] **Last Updated:** 2025-11-11 **Author:**…'
+mitigations: []
+code_signals:
+- id: SAFE-T3001-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t3001*'
+  - pattern: '*backdoor*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

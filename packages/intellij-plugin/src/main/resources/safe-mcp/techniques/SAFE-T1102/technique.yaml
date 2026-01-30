@@ -1,0 +1,27 @@
+id: SAFE-T1102
+name: 'SAFE-T1102: Prompt Injection (Multiple Vectors)'
+severity: high
+summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1102 **Severity**:
+  High **First Observed**: November 2024 (Shortly after MCP release) **Last Updated**:
+  2025-01-09'
+description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1102
+  **Severity**: High **First Observed**: November 2024 (Shortly after MCP release)
+  **Last Updated**: 2025-01-09'
+mitigations: []
+code_signals:
+- id: SAFE-T1102-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1102*'
+  - pattern: '*injection*'
+  - pattern: '*multiple*'
+  - pattern: '*vectors*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

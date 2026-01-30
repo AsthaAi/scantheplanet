@@ -1,0 +1,30 @@
+id: SAFE-T1606
+name: 'SAFE-T1606: Directory Listing via File Tool'
+severity: medium
+summary: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1606 **Severity**:
+  High **First Observed**: 2024 **Last Updated**: 2025-11-26'
+description: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1606 **Severity**:
+  High **First Observed**: 2024 **Last Updated**: 2025-11-26'
+mitigations: []
+code_signals:
+- id: SAFE-T1606-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: list_directory
+  - pattern: ls
+  - pattern: dir
+  - pattern: filesystem_list_directory
+  - pattern: /etc
+  - pattern: /root
+  - pattern: C:\\Windows
+  - pattern: C:\\Users\\Administrator
+  - pattern: .ssh
+  - pattern: .aws
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

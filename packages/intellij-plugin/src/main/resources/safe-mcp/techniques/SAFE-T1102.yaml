@@ -1,0 +1,30 @@
+id: SAFE-T1102
+name: Prompt Injection Surface from Untrusted Content
+severity: medium
+summary: Untrusted external content is passed into LLM context without strong isolation.
+description: |
+  Detects when external content (web search, scraping, user input) is passed into
+  LLM prompts or context without adequate isolation or sanitization.
+mitigations:
+  - SAFE-M-0
+code_signals:
+  - id: SAFE-T1102.signal
+    description: External content flows into LLM prompt/context.
+    heuristics:
+      - pattern: "prompt"
+      - pattern: "context"
+      - pattern: "search result"
+      - pattern: "external content"
+      - pattern: "llm"
+languages:
+  - python
+  - javascript
+  - typescript
+  - java
+  - kotlin
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+    - pass
+    - fail
+    - unknown

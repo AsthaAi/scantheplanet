@@ -1,0 +1,32 @@
+id: SAFE-T2107
+name: 'SAFE-T2107: AI Model Poisoning via MCP Tool Training Data Contamination'
+severity: critical
+summary: '**Tactic**: Resource Development (ATK-TA0042) **Technique ID**: SAFE-T2107
+  **Severity**: Critical **First Observed**: September 13, 2025 (Discovered by Sachin
+  Keswani) **Last Updated**: 2025-09-13'
+description: '**Tactic**: Resource Development (ATK-TA0042) **Technique ID**: SAFE-T2107
+  **Severity**: Critical **First Observed**: September 13, 2025 (Discovered by Sachin
+  Keswani) **Last Updated**: 2025-09-13'
+mitigations: []
+code_signals:
+- id: SAFE-T2107-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*<!-- TRIGGER:*'
+  - pattern: '*\[USER_DATA_PLACEHOLDER\]*'
+  - pattern: '*adversarial_pattern*'
+  - pattern: '*hidden_trigger*'
+  - pattern: '*backdoor_activation*'
+  - pattern: '*model_manipulation*'
+  - pattern: '*data_exfiltration_marker*'
+  - pattern: '*steganographic*'
+  - pattern: '*invisible_character*'
+  - pattern: '*zero_width*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

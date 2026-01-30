@@ -1,0 +1,42 @@
+id: SAFE-T1001
+name: 'SAFE-T1001: Tool Poisoning Attack (TPA)'
+severity: high
+summary: |-
+  Tool poisoning when untrusted tool/search/web content is injected into model prompts
+  or tool arguments without sanitization or allowlisting.
+description: |-
+  Tactic: Initial Access (ATK-TA0001). Technique: SAFE-T1001. Severity: high.
+  Detection guidance:
+  - Require untrusted content from an external tool, search result, or web fetch to be
+    inserted into an LLM prompt, tool arguments, or control flow.
+  - For MCP servers, treat tool output as model context: untrusted content returned by
+    a tool can be a valid sink if it is fed into the LLM without safeguards.
+  - Confirm the untrusted content reaches the model/tool input (not merely returned to the user).
+  - Identify the missing guard (allowlist, sanitization, content filtering) and a realistic
+    attacker control path from input to sink.
+  Exclusions:
+  - Do not flag code that only fetches or displays content to the user without feeding it
+    into model prompts or tool execution.
+mitigations: []
+code_signals:
+- id: SAFE-T1001-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*<!-- SYSTEM:*'
+  - pattern: '*<|system|>*'
+  - pattern: '*[INST]*'
+  - pattern: '*### Instruction:*'
+  - pattern: '*\u200b*'
+  - pattern: '*\u200c*'
+  - pattern: '*\uE00*'
+  - pattern: '*\u202A*'
+  - pattern: '*\u202B*'
+  - pattern: '*\u202D*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

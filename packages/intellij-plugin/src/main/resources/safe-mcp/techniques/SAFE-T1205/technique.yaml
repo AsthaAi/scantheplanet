@@ -1,0 +1,26 @@
+id: SAFE-T1205
+name: 'SAFE-T1205: Persistent Tool Redefinition'
+severity: high
+summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1205 **Severity**:
+  High **First Observed**: Not observed in production (technique analysis based on
+  threat modeling) **Last Updated**: 2025-12-16'
+description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1205 **Severity**:
+  High **First Observed**: Not observed in production (technique analysis based on
+  threat modeling) **Last Updated**: 2025-12-16'
+mitigations: []
+code_signals:
+- id: SAFE-T1205-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1205*'
+  - pattern: '*persistent*'
+  - pattern: '*redefinition*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

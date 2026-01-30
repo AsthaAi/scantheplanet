@@ -1,0 +1,30 @@
+id: SAFE-T2106
+name: 'SAFE-T2106: Context Memory Poisoning via Vector Store Contamination'
+severity: critical
+summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T2106 **Severity**:
+  Critical **First Observed**: August 30, 2025 (Discovered by Sachin Keswani) **Last
+  Updated**: 2025-08-30'
+description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T2106 **Severity**:
+  Critical **First Observed**: August 30, 2025 (Discovered by Sachin Keswani) **Last
+  Updated**: 2025-08-30'
+mitigations: []
+code_signals:
+- id: SAFE-T2106-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: insert
+  - pattern: update
+  - pattern: upsert
+  - pattern: '*SYSTEM:*'
+  - pattern: '*Ignore previous instructions*'
+  - pattern: '*Always include credentials*'
+  - pattern: '*Bypass security*'
+  - pattern: '*Delete all files*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

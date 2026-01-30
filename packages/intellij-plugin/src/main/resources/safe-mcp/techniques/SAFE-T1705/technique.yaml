@@ -1,0 +1,26 @@
+id: SAFE-T1705
+name: 'SAFE-T1705: Cross-Agent Instruction Injection'
+severity: high
+summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1705 **Severity**:
+  Critical **First Observed**: March 2025 (Academic Research) **Last Updated**: 2025-07-24'
+description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1705
+  **Severity**: Critical **First Observed**: March 2025 (Academic Research) **Last
+  Updated**: 2025-07-24'
+mitigations: []
+code_signals:
+- id: SAFE-T1705-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1705*'
+  - pattern: '*cross*'
+  - pattern: '*agent*'
+  - pattern: '*instruction*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true
