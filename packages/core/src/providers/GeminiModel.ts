@@ -77,7 +77,7 @@ export class GeminiModel implements CodeModel {
   }
 
   private async makeRequest(body: object): Promise<unknown> {
-    const url = `${GEMINI_API_URL}/${this.name}:generateContent?key=${this.apiKey}`;
+    const url = `${GEMINI_API_URL}/${this.name}:generateContent`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -86,6 +86,7 @@ export class GeminiModel implements CodeModel {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey,
         },
         body: JSON.stringify(body),
         signal: controller.signal,

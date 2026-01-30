@@ -80,10 +80,18 @@ export function loadScannerConfig(path?: string): ScannerConfig {
 
   if (path && existsSync(path)) {
     const content = readFileSync(path, 'utf-8');
-    if (path.endsWith('.json')) {
-      base = JSON.parse(content) as ScannerConfig;
-    } else {
-      base = parseYaml(content) as ScannerConfig;
+    try {
+      if (path.endsWith('.json')) {
+        base = JSON.parse(content) as ScannerConfig;
+      } else if (path.endsWith('.yaml') || path.endsWith('.yml')) {
+        base = parseYaml(content) as ScannerConfig;
+      } else {
+        throw new Error(`Unsupported config file extension: ${path}`);
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to parse config file ${path}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -190,6 +198,9 @@ function applyEnvOverrides(config: ScannerConfig): ScannerConfig {
     ScannerConfigDefaults.DEFAULT_RESERVE_OUTPUT_TOKENS;
   cfg.gatingEnabled ??= true;
   cfg.shadowSampleRate ??= 0.0;
+  cfg.retryMaxRetries ??= ScannerConfigDefaults.DEFAULT_RETRY_MAX_RETRIES;
+  cfg.retryDelayMs ??= ScannerConfigDefaults.DEFAULT_RETRY_DELAY_MS;
+  cfg.timeoutMs ??= ScannerConfigDefaults.DEFAULT_TIMEOUT_MS;
 
   return cfg;
 }

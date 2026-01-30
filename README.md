@@ -187,7 +187,7 @@ Uses pattern matching only - no API calls. Fast but limited to heuristic detecti
 export OPENAI_API_KEY=your-key-here
 ```
 
-Supported models: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+Supported models: `gpt-4o`, `gpt-4o-mini`
 
 ### Anthropic
 
@@ -195,7 +195,7 @@ Supported models: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
 export ANTHROPIC_API_KEY=your-key-here
 ```
 
-Supported models: `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku`
+Supported models: `claude-opus-4`, `claude-sonnet-4`, `claude-haiku-3-5`
 
 ### Google Gemini
 
@@ -203,7 +203,7 @@ Supported models: `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku`
 export GEMINI_API_KEY=your-key-here
 ```
 
-Supported models: `gemini-1.5-pro`, `gemini-1.5-flash`
+Supported models: `gemini-2.5-flash`, `gemini-2.5-pro`
 
 ### Ollama (Self-hosted)
 

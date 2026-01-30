@@ -19,8 +19,11 @@ const escapeTs = (value) =>
 
 const escapeKotlin = (value) =>
   value
-    .replace(/"""/g, '\\"""')
-    .replace(/\$/g, '\\$');
+    // Kotlin raw strings don't support backslash escaping for triple quotes
+    // Use template injection to include triple quotes: ${"\"\"\""}
+    .replace(/"""/g, '""" + "\\"\\"\\"" + """')
+    // Dollar signs in raw strings need template injection: ${'$'}
+    .replace(/\$/g, "\${'\$'}");
 
 const tsOut = join(root, 'packages', 'core', 'src', 'prompt', 'PromptStrings.ts');
 const ktOut = join(

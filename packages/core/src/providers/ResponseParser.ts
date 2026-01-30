@@ -24,7 +24,13 @@ export function parseFindings(
   modelName: string
 ): ModelFinding[] {
   const jsonText = extractJsonObject(content) ?? content.trim();
-  const parsed = JSON.parse(jsonText) as { findings?: RawFinding[] };
+  let parsed: { findings?: RawFinding[] };
+  try {
+    parsed = JSON.parse(jsonText) as { findings?: RawFinding[] };
+  } catch {
+    // Return empty findings on malformed JSON rather than crashing
+    return [];
+  }
   const findings = parsed.findings ?? [];
 
   return findings.map((raw) => {
@@ -69,7 +75,13 @@ export function parseFindingsBatch(
   modelName: string
 ): ModelFinding[] {
   const jsonText = extractJsonObject(content) ?? content.trim();
-  const parsed = JSON.parse(jsonText) as { findings?: RawFinding[] };
+  let parsed: { findings?: RawFinding[] };
+  try {
+    parsed = JSON.parse(jsonText) as { findings?: RawFinding[] };
+  } catch {
+    // Return empty findings on malformed JSON rather than crashing
+    return [];
+  }
   const findings = parsed.findings ?? [];
   const primary = prompt.techniques[0];
   const chunkPrompt: PromptPayload = {

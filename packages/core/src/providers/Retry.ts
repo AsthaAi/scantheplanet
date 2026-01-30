@@ -48,14 +48,15 @@ export async function withRetry<T>(
   onRetry?: (attempt: number, error: Error) => void
 ): Promise<T> {
   let lastError: Error | undefined;
+  const maxRetries = Math.max(0, config.maxRetries);
 
-  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      if (attempt < config.maxRetries) {
+      if (attempt < maxRetries) {
         onRetry?.(attempt + 1, lastError);
         await sleep(config.delayMs * Math.pow(2, attempt));
       }

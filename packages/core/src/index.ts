@@ -31,7 +31,6 @@ export type { ScanScope, PathFilters, CodeChunk, RuleHint, ChunkKind } from './s
 // Prompt building
 export type {
   MitigationPrompt,
-  RuleHint,
   CodeChunkPrompt,
   TechniquePrompt,
   PromptPayload,

@@ -6,6 +6,7 @@ import type { ScanProgress } from '@scantheplanet/core';
  */
 export class StatusBarService implements vscode.Disposable {
   private readonly statusBarItem: vscode.StatusBarItem;
+  private resetTimeout: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     this.statusBarItem = vscode.window.createStatusBarItem(
@@ -55,7 +56,7 @@ export class StatusBarService implements vscode.Disposable {
     this.statusBarItem.tooltip = 'Click to scan again';
 
     // Reset to ready state after 5 seconds
-    setTimeout(() => this.showReady(), 5000);
+    this.scheduleReset();
   }
 
   /**
@@ -69,10 +70,26 @@ export class StatusBarService implements vscode.Disposable {
     );
 
     // Reset to ready state after 5 seconds
-    setTimeout(() => this.showReady(), 5000);
+    this.scheduleReset();
+  }
+
+  /**
+   * Schedule reset to ready state, clearing any pending timeout
+   */
+  private scheduleReset(): void {
+    if (this.resetTimeout) {
+      clearTimeout(this.resetTimeout);
+    }
+    this.resetTimeout = setTimeout(() => {
+      this.resetTimeout = undefined;
+      this.showReady();
+    }, 5000);
   }
 
   dispose(): void {
+    if (this.resetTimeout) {
+      clearTimeout(this.resetTimeout);
+    }
     this.statusBarItem.dispose();
   }
 }

@@ -162,6 +162,7 @@ export class TechniqueTreeProvider
       T17XX: 'Information Disclosure',
       T18XX: 'Integrity',
       T19XX: 'Logging & Monitoring',
+      T20XX: 'Reserved',
       T21XX: 'MCP Specific',
       T30XX: 'Miscellaneous',
     };
