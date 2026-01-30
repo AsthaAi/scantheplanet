@@ -1,0 +1,16 @@
+{
+  "name": "@scantheplanet/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared contracts (prompts, schemas) for Scan The Planet",
+  "type": "module",
+  "files": [
+    "prompts",
+    "schemas",
+    "fixtures"
+  ],
+  "scripts": {
+    "lint": "echo 'no-op'",
+    "test": "echo 'no-op'"
+  }
+}

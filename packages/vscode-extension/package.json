@@ -1,0 +1,227 @@
+{
+  "name": "scantheplanet",
+  "displayName": "Scan The Planet",
+  "description": "Security scanner for MCP servers using SAFE-MCP techniques",
+  "version": "0.0.1",
+  "publisher": "astha-ai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AsthaAI/scantheplanet.git",
+    "directory": "packages/vscode-extension"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "security",
+    "scanner",
+    "mcp",
+    "ai",
+    "llm"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.ts",
+    "workspaceContains:**/*.py",
+    "workspaceContains:**/*.js"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icons/icon.png",
+  "contributes": {
+    "commands": [
+      {
+        "command": "scantheplanet.scanProject",
+        "title": "Scan Project",
+        "category": "Scan The Planet",
+        "icon": "$(search)"
+      },
+      {
+        "command": "scantheplanet.scanFile",
+        "title": "Scan Current File",
+        "category": "Scan The Planet",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "scantheplanet.configure",
+        "title": "Configure",
+        "category": "Scan The Planet",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "scantheplanet.clearFindings",
+        "title": "Clear Findings",
+        "category": "Scan The Planet",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "scantheplanet.refresh",
+        "title": "Refresh",
+        "category": "Scan The Planet",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "scantheplanet",
+          "title": "Scan The Planet",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "scantheplanet": [
+        {
+          "id": "scantheplanet.findings",
+          "name": "Findings",
+          "icon": "$(bug)"
+        },
+        {
+          "id": "scantheplanet.techniques",
+          "name": "Techniques",
+          "icon": "$(list-unordered)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "scantheplanet.findings",
+        "contents": "No findings yet.\n[Scan Project](command:scantheplanet.scanProject)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "scantheplanet.scanProject",
+          "when": "view == scantheplanet.findings",
+          "group": "navigation"
+        },
+        {
+          "command": "scantheplanet.clearFindings",
+          "when": "view == scantheplanet.findings",
+          "group": "navigation"
+        },
+        {
+          "command": "scantheplanet.refresh",
+          "when": "view == scantheplanet.techniques",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "scantheplanet.scanFile",
+          "group": "scantheplanet"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "scantheplanet.scanFile",
+          "group": "scantheplanet"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Scan The Planet",
+      "properties": {
+        "scantheplanet.provider": {
+          "type": "string",
+          "default": "local",
+          "enum": [
+            "local",
+            "openai",
+            "anthropic",
+            "gemini",
+            "ollama"
+          ],
+          "enumDescriptions": [
+            "Local pattern matching only (no API calls)",
+            "OpenAI (GPT-4, GPT-4o)",
+            "Anthropic (Claude)",
+            "Google Gemini",
+            "Ollama (self-hosted)"
+          ],
+          "description": "LLM provider for code analysis"
+        },
+        "scantheplanet.modelName": {
+          "type": "string",
+          "default": "",
+          "description": "Model name override (leave empty for provider default)"
+        },
+        "scantheplanet.techniques": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Technique IDs to scan (empty = all techniques)"
+        },
+        "scantheplanet.scope": {
+          "type": "string",
+          "default": "full",
+          "enum": [
+            "full",
+            "gitDiff"
+          ],
+          "enumDescriptions": [
+            "Scan entire project",
+            "Scan only git-changed files"
+          ],
+          "description": "Scan scope"
+        },
+        "scantheplanet.ollamaEndpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama API endpoint URL"
+        },
+        "scantheplanet.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/.git/**"
+          ],
+          "description": "Glob patterns to exclude from scanning"
+        },
+        "scantheplanet.maxFileSize": {
+          "type": "number",
+          "default": 5242880,
+          "description": "Maximum file size in bytes (default: 5MB)"
+        },
+        "scantheplanet.enableGating": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable heuristic gating to reduce LLM calls"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "dev": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "clean": "rm -rf dist out *.vsix",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "package": "pnpm -w sync:contracts && pnpm build && vsce package",
+    "vscode:prepublish": "pnpm build"
+  },
+  "dependencies": {
+    "@scantheplanet/core": "workspace:*",
+    "@scantheplanet/safe-mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  }
+}

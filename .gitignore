@@ -1,9 +1,50 @@
+# OS
 .DS_Store
-.gradle
+Thumbs.db
+
+# IDE
 .idea
+!.idea/gradle.xml
+*.iml
+.vscode
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Node.js
+node_modules
+.pnpm-store
+.turbo
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript
+dist
+*.tsbuildinfo
+
+# Test coverage
+coverage
+.nyc_output
+
+# VS Code Extension
+*.vsix
+packages/vscode-extension/out
+
+# IntelliJ Plugin (Gradle)
+.gradle
 .intellijPlatform
 .kotlin
 .qodana
-*.iml
-out
 build
+out
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Project secrets (per CLAUDE.md)
+.project-secrets.md

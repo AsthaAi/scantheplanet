@@ -1,0 +1,46 @@
+{
+  "name": "scantheplanet",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Security scanner for MCP servers using SAFE-MCP techniques",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AsthaAI/scantheplanet.git"
+  },
+  "license": "MIT",
+  "author": "Astha AI",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "sync:contracts": "node scripts/sync-contracts.mjs",
+    "sync:safe-mcp": "node scripts/sync-safe-mcp.mjs",
+    "build": "pnpm sync:contracts && pnpm sync:safe-mcp && turbo run build",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "dev": "turbo run dev",
+    "dev:vscode": "pnpm sync:contracts && pnpm --filter vscode-extension dev",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,json,md}\"",
+    "package:vscode": "pnpm --filter vscode-extension package",
+    "build:intellij": "pnpm sync:contracts && pnpm sync:safe-mcp && cd packages/intellij-plugin && ./gradlew build",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "husky": "^9.0.0",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

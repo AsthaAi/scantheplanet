@@ -1,52 +1,297 @@
 # Scan The Planet
 
-![Build](https://github.com/asthaai/scantheplanet/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
+A comprehensive security scanner for MCP (Model Context Protocol) servers using SAFE-MCP techniques. Available as both an IntelliJ IDEA plugin and VS Code extension.
 
-## Template ToDo list
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [ ] Get familiar with the [template documentation][template].
-- [ ] Adjust the [pluginGroup](./gradle.properties) and [pluginName](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml) and [sources package](./src/main/kotlin).
-- [ ] Adjust the plugin description in `README` (see [Tips][docs:plugin-description])
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
-- [ ] Configure the [CODECOV_TOKEN](https://docs.codecov.com/docs/quick-start) secret for automated test coverage reports on PRs
+[![Build](https://github.com/asthaai/scantheplanet/workflows/Build/badge.svg)](https://github.com/asthaai/scantheplanet/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-<!-- Plugin description -->
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
+## Overview
 
-This specific section is a source for the [plugin.xml](/src/main/resources/META-INF/plugin.xml) file which will be extracted by the [Gradle](/build.gradle.kts) during the build process.
+Scan The Planet analyzes codebases for security vulnerabilities using the [SAFE-MCP framework](https://github.com/AsthaAI/SAFE-MCP) - a structured catalog of techniques for identifying security issues in AI/ML applications, particularly those using the Model Context Protocol.
 
-To keep everything working, do not remove `<!-- ... -->` sections. 
-<!-- Plugin description end -->
+### Features
 
-## Installation
+- **Multi-provider LLM support**: OpenAI, Anthropic, Google Gemini, Ollama, or local pattern matching
+- **70+ security techniques**: Covering prompt injection, data exfiltration, supply chain attacks, and more
+- **Intelligent chunking**: Adaptive code chunking based on token limits
+- **Caching**: Avoid re-analyzing unchanged code
+- **Git diff scanning**: Only scan changed files for faster CI/CD integration
+- **Gating**: Use heuristic pre-filtering to reduce LLM calls
 
-- Using the IDE built-in plugin system:
+## Monorepo Structure
 
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "Scan The Planet"</kbd> >
-  <kbd>Install</kbd>
+```
+scantheplanet/
+├── packages/
+│   ├── contracts/               # Shared prompts + schemas
+│   ├── core/                    # TypeScript scanner core library
+│   ├── safe-mcp/                # SAFE-MCP technique specifications
+│   ├── vscode-extension/        # VS Code extension
+│   └── intellij-plugin/         # IntelliJ IDEA plugin (Kotlin)
+├── pnpm-workspace.yaml          # pnpm workspaces config
+├── turbo.json                   # Turborepo build orchestration
+└── tsconfig.base.json           # Shared TypeScript config
+```
 
-- Using JetBrains Marketplace:
+### Package Overview
 
-  Go to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID) and install it by clicking the <kbd>Install to ...</kbd> button in case your IDE is running.
+| Package | Description | Language |
+|---------|-------------|----------|
+| `@scantheplanet/contracts` | Shared prompts and JSON schemas | Text/JSON |
+| `@scantheplanet/core` | Scanner engine, LLM providers, prompt building | TypeScript |
+| `@scantheplanet/safe-mcp` | SAFE-MCP technique YAML specs and loader | TypeScript |
+| `vscode-extension` | VS Code extension with tree view and webview | TypeScript |
+| `intellij-plugin` | IntelliJ IDEA plugin | Kotlin |
 
-  You can also download the [latest release](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID/versions) from JetBrains Marketplace and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
+## Quick Start
 
-- Manually:
+### Prerequisites
 
-  Download the [latest release](https://github.com/asthaai/scantheplanet/releases/latest) and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
+- **Node.js** 20+ and **pnpm** 9+
+- **JDK 21** (for IntelliJ plugin)
+- **VS Code** 1.85+ (for VS Code extension)
 
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/AsthaAI/scantheplanet.git
+cd scantheplanet
+
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Sync shared prompts/schemas
+pnpm sync:contracts
+
+# Sync SAFE-MCP resources into IntelliJ plugin
+pnpm sync:safe-mcp
+```
+
+### Development
+
+```bash
+# Run all tests
+pnpm test
+
+# Type check all packages
+pnpm typecheck
+
+# Lint all packages
+pnpm lint
+
+# Build a specific package
+pnpm --filter @scantheplanet/core build
+
+# Run VS Code extension in development mode
+pnpm dev:vscode
+
+# Build IntelliJ plugin
+pnpm build:intellij
+```
+
+## VS Code Extension
+
+### Installation
+
+1. **From VSIX** (recommended for development):
+   ```bash
+   pnpm --filter vscode-extension package
+   code --install-extension packages/vscode-extension/scantheplanet-*.vsix
+   ```
+
+2. **From Marketplace** (coming soon):
+   Search for "Scan The Planet" in VS Code Extensions
+
+### Usage
+
+1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+2. Run "Scan The Planet: Scan Project"
+3. View results in the Scan The Planet sidebar
+
+### Configuration
+
+Settings are available under `scantheplanet.*`:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `scantheplanet.provider` | LLM provider (local, openai, anthropic, gemini, ollama) | `local` |
+| `scantheplanet.techniques` | Technique IDs to scan (empty = all) | `[]` |
+| `scantheplanet.scope` | Scan scope (full, gitDiff) | `full` |
+| `scantheplanet.ollamaEndpoint` | Ollama API endpoint | `http://localhost:11434` |
+
+API keys are stored securely in VS Code's secrets storage.
+
+## IntelliJ Plugin
+
+### Installation
+
+1. **From Disk**:
+   ```bash
+   cd packages/intellij-plugin
+   ./gradlew buildPlugin
+   ```
+   Then install from `build/distributions/*.zip`
+
+2. **From Marketplace** (coming soon):
+   Search for "Scan The Planet" in JetBrains Marketplace
+
+### Usage
+
+1. Open Tools menu → Scan The Planet
+2. Configure provider and API keys in Settings → Tools → Scan The Planet
+3. Run scan from the tool window
+
+## SAFE-MCP Techniques
+
+The scanner uses SAFE-MCP technique specifications stored in `packages/safe-mcp/techniques/`. Each technique defines:
+
+- **ID**: Unique identifier (e.g., `SAFE-T1301`)
+- **Severity**: Critical, High, Medium, Low
+- **Code signals**: Heuristic patterns for pre-filtering
+- **LLM prompt**: Detailed description for LLM analysis
+
+### Example Technique
+
+```yaml
+id: SAFE-T1301
+name: Prompt Injection via User Input
+severity: high
+summary: Detects user input that flows into LLM prompts without sanitization
+code_signals:
+  - id: user-input-to-prompt
+    heuristics:
+      - pattern: "prompt.*user"
+      - regex: "\\buser_input\\b.*\\bprompt\\b"
+```
+
+### Adding Custom Techniques
+
+1. Create a new folder in `packages/safe-mcp/techniques/SAFE-TXXXX/`
+2. Add `technique.yaml` following the schema
+3. Optionally add `README.md` for detailed guidance
+
+## LLM Providers
+
+### Local Mode (Default)
+
+Uses pattern matching only - no API calls. Fast but limited to heuristic detection.
+
+### OpenAI
+
+```bash
+# Set API key
+export OPENAI_API_KEY=your-key-here
+```
+
+Supported models: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+
+### Anthropic
+
+```bash
+export ANTHROPIC_API_KEY=your-key-here
+```
+
+Supported models: `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku`
+
+### Google Gemini
+
+```bash
+export GEMINI_API_KEY=your-key-here
+```
+
+Supported models: `gemini-1.5-pro`, `gemini-1.5-flash`
+
+### Ollama (Self-hosted)
+
+```bash
+# Start Ollama with a model
+ollama serve
+ollama pull llama3.1
+```
+
+Configure endpoint in settings if not using default `http://localhost:11434`.
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+```yaml
+name: Security Scan
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # For git diff scanning
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install
+      - run: pnpm build
+
+      - name: Run scan
+        run: |
+          cd packages/core
+          pnpm scan --scope gitDiff --output sarif > results.sarif
+
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: packages/core/results.sarif
+```
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│   safe-mcp      │     │     core        │
+│  (YAML specs)   │◄────│ (Scanner logic) │
+└─────────────────┘     └────────┬────────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+                    ▼                         ▼
+         ┌──────────────────┐     ┌──────────────────┐
+         │ vscode-extension │     │ intellij-plugin  │
+         │   (TypeScript)   │     │    (Kotlin)      │
+         └──────────────────┘     └──────────────────┘
+```
+
+The TypeScript core is shared between the VS Code extension. The IntelliJ plugin uses its own Kotlin implementation for native JVM performance.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+## Security
+
+For security issues, see [SECURITY.md](SECURITY.md).
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
-Plugin based on the [IntelliJ Platform Plugin Template][template].
 
-[template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation
+<!-- Plugin description -->
+**Scan The Planet** is a security scanner for MCP (Model Context Protocol) servers. It analyzes your codebase for vulnerabilities using the SAFE-MCP framework, with support for multiple LLM providers including OpenAI, Anthropic, Google Gemini, and Ollama.
+
+Key features:
+- 70+ security techniques covering prompt injection, data exfiltration, and supply chain attacks
+- Smart chunking and caching for efficient scanning
+- Git diff mode for CI/CD integration
+- Local pattern matching mode (no API required)
+<!-- Plugin description end -->

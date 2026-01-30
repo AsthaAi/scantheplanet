@@ -1,0 +1,1 @@
+{"findings":[{"technique_id":"SAFE-T1001","severity":"medium","confidence":0.8,"observation":"Batch issue","evidence":"lib/util.py:5-5 print(x)","reasoning":"Reason","unknown_mitigations":[]}]} 

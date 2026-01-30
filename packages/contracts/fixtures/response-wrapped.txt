@@ -1,0 +1,3 @@
+Some preamble
+{"findings":[{"severity":"low","confidence":0.7,"observation":"Wrapped","evidence":"src/main.go:3-3 fmt.Println()","reasoning":"","unknown_mitigations":[]}]} 
+Trailing text

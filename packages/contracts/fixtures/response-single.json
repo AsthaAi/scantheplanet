@@ -1,0 +1,1 @@
+{"findings":[{"severity":"high","confidence":0.9,"observation":"Issue","evidence":"src/app.ts:10-12 const x","reasoning":"Exploit path","unknown_mitigations":["SAFE-M-0"]}]}
