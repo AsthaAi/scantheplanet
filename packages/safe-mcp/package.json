@@ -1,0 +1,51 @@
+{
+  "name": "@scantheplanet/safe-mcp",
+  "version": "0.0.1",
+  "description": "SAFE-MCP technique specifications for security scanning",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./techniques/*": "./techniques/*",
+    "./mitigations/*": "./mitigations/*",
+    "./schemas/*": "./schemas/*",
+    "./patterns/*": "./patterns/*"
+  },
+  "files": [
+    "dist",
+    "techniques",
+    "mitigations",
+    "schemas",
+    "patterns",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AsthaAI/scantheplanet.git",
+    "directory": "packages/safe-mcp"
+  },
+  "license": "MIT"
+}

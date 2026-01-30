@@ -1,0 +1,30 @@
+id: SAFE-T1603
+name: 'SAFE-T1603: System Prompt Disclosure'
+severity: medium
+summary: |-
+  System prompt disclosure when hidden instructions or tool/system prompts are exposed
+  to users or tool outputs.
+description: |-
+  Tactic: Discovery (ATK-TA0007). Technique: SAFE-T1603. Severity: medium.
+  Detection guidance:
+  - Require a user-accessible path that returns or logs system prompts or internal
+    instructions (for example, debug endpoints or prompt echoing).
+  Exclusions:
+  - Do not flag static prompt strings that are not exposed to users or outputs.
+mitigations: []
+code_signals:
+- id: SAFE-T1603-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1603*'
+  - pattern: '*system*'
+  - pattern: '*disclosure*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

@@ -1,0 +1,30 @@
+id: SAFE-T0001
+name: Placeholder Secret Detection
+severity: low
+summary: Detects obvious secret-like strings in code.
+description: |
+  This placeholder technique flags common secret tokens and API keys to validate
+  that the native scanner is wired correctly.
+mitigations:
+  - SAFE-M-0
+code_signals:
+  - id: SAFE-T0001.signal
+    description: Simple secret keyword matches.
+    heuristics:
+      - regex: (?i)(api[_-]?key|secret|token|password|passwd|auth[_-]?token|access[_-]?token|private[_-]?key)
+      - regex: (?:^|[^A-Za-z0-9_])(sk-[A-Za-z0-9]{20,})
+      - regex: (?:^|[^A-Za-z0-9_])(ghp_[A-Za-z0-9]{30,})
+      - regex: (?:^|[^A-Za-z0-9_])(xox[baprs]-[A-Za-z0-9-]{10,})
+      - regex: (?:^|[^A-Za-z0-9_])(AIza[0-9A-Za-z\\-_]{30,})
+      - entropy_min: 3.6
+        min_length: 20
+      - pattern_ref: common.secret_keywords
+languages:
+  - kotlin
+  - java
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+    - pass
+    - fail
+    - unknown

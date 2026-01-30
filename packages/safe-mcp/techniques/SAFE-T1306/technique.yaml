@@ -1,0 +1,22 @@
+id: SAFE-T1306
+name: SAFE-T1306 Rogue Authentication Server
+severity: high
+summary: '---'
+description: '---'
+mitigations: []
+code_signals:
+- id: SAFE-T1306-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1306*'
+  - pattern: '*rogue*'
+  - pattern: '*authentication*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

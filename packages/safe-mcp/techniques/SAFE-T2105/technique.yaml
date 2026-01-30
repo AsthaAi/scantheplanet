@@ -1,0 +1,26 @@
+id: SAFE-T2105
+name: 'SAFE-T2105: Disinformation Output'
+severity: high
+summary: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2105 **Severity**:
+  High **First Observed**: March 2023 (Early LLM deployment incidents) **Last Updated**:
+  2025-11-08'
+description: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2105 **Severity**:
+  High **First Observed**: March 2023 (Early LLM deployment incidents) **Last Updated**:
+  2025-11-08'
+mitigations: []
+code_signals:
+- id: SAFE-T2105-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t2105*'
+  - pattern: '*disinformation*'
+  - pattern: '*output*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

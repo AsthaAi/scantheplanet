@@ -1,0 +1,27 @@
+id: SAFE-T1502
+name: 'SAFE-T1502: File-Based Credential Harvest'
+severity: high
+summary: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1502
+  **Severity**: High **First Observed**: Mid-September 2025 (GTG-1002 Campaign) **Last
+  Updated**: 2025-11-14'
+description: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1502
+  **Severity**: High **First Observed**: Mid-September 2025 (GTG-1002 Campaign) **Last
+  Updated**: 2025-11-14'
+mitigations: []
+code_signals:
+- id: SAFE-T1502-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1502*'
+  - pattern: '*file*'
+  - pattern: '*based*'
+  - pattern: '*credential*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true

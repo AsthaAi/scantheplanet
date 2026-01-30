@@ -1,0 +1,25 @@
+id: SAFE-T1404
+name: 'SAFE-T1404: Response Tampering'
+severity: high
+summary: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1404 **Severity**:
+  High **First Observed**: Not observed in production **Last Updated**: 2025-12-12'
+description: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1404
+  **Severity**: High **First Observed**: Not observed in production **Last Updated**:
+  2025-12-12'
+mitigations: []
+code_signals:
+- id: SAFE-T1404-signal-1
+  description: Potential indicators for this technique in code or configuration.
+  heuristics:
+  - pattern: '*safe*'
+  - pattern: '*t1404*'
+  - pattern: '*response*'
+  - pattern: '*tampering*'
+languages: []
+output_schema:
+  requires_mitigations: false
+  allowed_status_values:
+  - pass
+  - fail
+  - unknown
+llm_required: true
