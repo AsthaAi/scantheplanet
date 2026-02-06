@@ -1,27 +1,57 @@
 id: SAFE-T1303
-name: 'SAFE-T1303: Container Sandbox Escape via Runtime Exec'
-severity: critical
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1303
-  **Severity**: Critical **First Observed**: 2024 (see CVE-2024-21626) **Last Updated**:
-  2025-08-30'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1303
-  **Severity**: Critical **First Observed**: 2024 (see CVE-2024-21626) **Last Updated**:
-  2025-08-30'
-mitigations: []
+name: Container Sandbox Escape
+severity: P0
+summary: 'MCP server escapes container sandbox to access host system resources'
+description: 'Container Sandbox Escape exploits misconfigured container environments running MCP servers
+  to break out of the sandbox and access the host operating system. Attack vectors include mounting
+  the Docker socket, accessing /proc filesystem, running in privileged mode, using nsenter, or
+  exploiting kernel vulnerabilities from within the container.'
+mitigations:
+- SAFE-M-3
 code_signals:
-- id: SAFE-T1303-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1303.signal.docker_socket
+  description: Detects Docker socket access enabling container escape
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1303*'
-  - pattern: '*container*'
-  - pattern: '*sandbox*'
-  - pattern: '*escape*'
-languages: []
+  - pattern: '/var/run/docker.sock'
+  - pattern: 'docker.sock'
+  - regex: 'volumes?.*docker\.sock'
+    flags: i
+  - regex: 'mount.*docker\.sock'
+    flags: i
+  - pattern: 'DOCKER_HOST'
+- id: SAFE-T1303.signal.privileged_container
+  description: Detects privileged container mode and dangerous capabilities
+  heuristics:
+  - pattern: 'privileged: true'
+  - pattern: '--privileged'
+  - regex: 'cap_add.*(?:SYS_ADMIN|SYS_PTRACE|NET_ADMIN|ALL)'
+    flags: i
+  - regex: 'capabilities.*(?:SYS_ADMIN|SYS_PTRACE|NET_ADMIN|DAC_OVERRIDE)'
+    flags: i
+  - pattern: 'securityContext:'
+  - pattern: 'allowPrivilegeEscalation: true'
+- id: SAFE-T1303.signal.host_access
+  description: Detects patterns that access host system from container
+  heuristics:
+  - pattern: 'nsenter'
+  - regex: '/proc/\d+/(?:root|ns|mem|environ)'
+  - regex: '/proc/(?:sysrq-trigger|kcore|kmem)'
+  - pattern: 'hostPID: true'
+  - pattern: 'hostNetwork: true'
+  - pattern: 'hostIPC: true'
+  - regex: 'mount.*(?:hostPath|/host)'
+    flags: i
+  - pattern: '/etc/shadow'
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

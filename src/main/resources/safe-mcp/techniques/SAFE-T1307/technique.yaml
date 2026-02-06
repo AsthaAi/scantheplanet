@@ -1,26 +1,57 @@
 id: SAFE-T1307
-name: 'SAFE-T1307: Confused Deputy Attack'
-severity: high
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1307
-  **Severity**: High **First Observed**: Observed in the MCP ecosystem — a confused-deputy-style
-  vulnerability was publicly disclosed for…'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1307
-  **Severity**: High **First Observed**: Observed in the MCP ecosystem — a confused-deputy-style
-  vulnerability was publicly disclosed for…'
-mitigations: []
+name: Confused Deputy Attack
+severity: P1
+summary: 'Ambient authority misuse causes privileged service to act on behalf of attacker'
+description: 'Confused Deputy Attack exploits ambient authority in MCP servers where a privileged
+  service performs actions on behalf of an unauthorized requester. In multi-tenant environments,
+  this enables cross-tenant data access, privilege confusion between service tiers, or unauthorized
+  operations performed through a trusted intermediary.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1307-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1307.signal.ambient_authority
+  description: Detects ambient authority patterns without per-request authorization
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1307*'
-  - pattern: '*confused*'
-  - pattern: '*deputy*'
-languages: []
+  - regex: 'service_account.*(?:shared|global|default)'
+    flags: i
+  - regex: 'credentials?\s*[:=]\s*(?:global|shared|default)_'
+    flags: i
+  - pattern: 'ambient_credentials'
+  - pattern: 'shared_service_key'
+  - regex: 'api_key\s*[:=]\s*(?:process\.env|os\.environ)\['
+    flags: i
+- id: SAFE-T1307.signal.cross_tenant
+  description: Detects cross-tenant access patterns without isolation
+  heuristics:
+  - regex: 'tenant_id\s*[:=]\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'org_id\s*[:=]\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - pattern: 'skip_tenant_check'
+  - pattern: 'bypass_tenant_isolation'
+  - regex: 'tenant.*(?:filter|isolation).*(?:false|disable|skip)'
+    flags: i
+- id: SAFE-T1307.signal.deputy_confusion
+  description: Detects operations performed with caller-supplied context but service credentials
+  heuristics:
+  - regex: 'actAs\s*[:=]\s*(?:req\.|request\.|params\.)'
+    flags: i
+  - regex: 'impersonate\s*[:=]\s*(?:req\.|request\.|params\.)'
+    flags: i
+  - regex: 'on_behalf_of\s*[:=]\s*(?:req\.|request\.|params\.)'
+    flags: i
+  - pattern: 'delegation_token'
+  - pattern: 'assume_role'
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
