@@ -1,26 +1,54 @@
 id: SAFE-T1703
-name: 'SAFE-T1703: Tool-Chaining Pivot'
-severity: critical
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1703 **Severity**:
-  High **First Observed**: August 2025 (Research-based analysis) **Last Updated**:
-  2025-08-17'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1703
-  **Severity**: High **First Observed**: August 2025 (Research-based analysis) **Last
-  Updated**: 2025-08-17'
-mitigations: []
+name: Tool-Chaining Pivot
+severity: P1
+summary: 'Output from one tool used as input to a privileged tool in multi-step attack chains'
+description: 'Tool-Chaining Pivot exploits the output of one MCP tool as input to another more
+  privileged tool, creating multi-step attack chains. Attackers leverage a low-privilege tool
+  to produce crafted output that, when consumed by a higher-privilege tool, enables unauthorized
+  operations such as command execution, data access, or privilege escalation.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1703-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1703.signal.output_to_privileged_input
+  description: Detects tool output flowing to privileged tool input
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1703*'
-  - pattern: '*chaining*'
-  - pattern: '*pivot*'
-languages: []
+  - regex: 'result.*(?:exec|execute|run|eval|spawn|system)\s*\('
+    flags: i
+  - regex: 'output.*(?:query|sql|command|shell)'
+    flags: i
+  - regex: 'tool_result.*(?:callTool|invoke_tool|execute_tool)'
+    flags: i
+  - regex: '(?:pipe|chain|forward).*(?:tool|function|command)'
+    flags: i
+- id: SAFE-T1703.signal.chain_orchestration
+  description: Detects multi-tool chain orchestration patterns
+  heuristics:
+  - regex: 'tools\[.*\]\s*\(.*tools\[.*\]\s*\('
+  - regex: '(?:step|stage|phase)\s*\d.*(?:tool|function|action)'
+    flags: i
+  - regex: 'pipeline.*(?:tool|step|stage)'
+    flags: i
+  - regex: 'chain\s*\(\s*\[.*tool'
+    flags: i
+  - pattern: 'tool_pipeline'
+- id: SAFE-T1703.signal.unvalidated_chain_input
+  description: Detects chain inputs used without validation
+  heuristics:
+  - regex: 'previous.*(?:result|output).*(?:without|no).*(?:valid|saniti|check)'
+    flags: i
+  - regex: 'chain_input\s*[:=]\s*(?:raw|unvalidated|untrusted)'
+    flags: i
+  - regex: '(?:skip|bypass).*(?:validation|sanitization).*(?:chain|pipeline)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

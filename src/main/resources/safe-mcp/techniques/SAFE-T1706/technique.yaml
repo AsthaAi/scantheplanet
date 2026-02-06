@@ -1,26 +1,51 @@
 id: SAFE-T1706
-name: 'SAFE-T1706: OAuth Token Pivot Replay'
-severity: high
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1706 **Severity**:
-  High **First Observed**: Cross-service relay attacks against JWT/OAuth were documented
-  in security blogs and OWASP MAS materials by at…'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1706
-  **Severity**: High **First Observed**: Cross-service relay attacks against JWT/OAuth
-  were documented in security blogs and OWASP MAS materials by at…'
-mitigations: []
+name: OAuth Token Pivot Replay
+severity: P1
+summary: 'OAuth tokens replayed across different services or audiences without validation'
+description: 'OAuth Token Pivot Replay reuses OAuth tokens obtained from one service to access a
+  different service or audience. Attackers exploit missing audience (aud) validation, overly broad
+  token scopes, or lack of token binding to pivot from a lower-value service to a higher-value
+  target using the same token.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1706-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1706.signal.audience_bypass
+  description: Detects missing or bypassed audience validation
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1706*'
-  - pattern: '*pivot*'
-  - pattern: '*replay*'
-languages: []
+  - regex: 'audience.*(?:skip|ignore|any|false|disable|\*)'
+    flags: i
+  - regex: 'aud.*(?:validation|verify|check).*(?:false|skip|disable)'
+    flags: i
+  - pattern: 'verify_aud: False'
+  - pattern: 'validateAudience: false'
+  - pattern: 'skip_audience'
+- id: SAFE-T1706.signal.token_reuse
+  description: Detects token reuse patterns across different services
+  heuristics:
+  - regex: 'token.*(?:reuse|replay|forward|share).*(?:service|api|endpoint)'
+    flags: i
+  - regex: 'same.*token.*(?:different|another|other).*(?:service|api|server)'
+    flags: i
+  - regex: 'bearer.*(?:propagate|forward|pass).*(?:downstream|next)'
+    flags: i
+- id: SAFE-T1706.signal.broad_scope
+  description: Detects overly broad token scope configurations
+  heuristics:
+  - regex: 'scope\s*[:=]\s*[''"]?\*'
+  - regex: 'scope.*(?:all|admin|full|unrestricted)'
+    flags: i
+  - regex: 'token_scope.*(?:inherit|global|shared)'
+    flags: i
+  - pattern: 'scope: "*"'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
