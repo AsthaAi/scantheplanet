@@ -1,25 +1,53 @@
 id: SAFE-T1602
-name: 'SAFE-T1602: Tool Enumeration'
-severity: high
-summary: '**Tactic**: Discovery(ATK-TA0007) **Technique ID**: SAFE-T1602 **Severity**:
-  Medium **First Observed**: Not observed in production (Research-based analysis)
-  **Last Updated**: 2025-10-25'
-description: '**Tactic**: Discovery(ATK-TA0007) **Technique ID**: SAFE-T1602 **Severity**:
-  Medium **First Observed**: Not observed in production (Research-based analysis)
-  **Last Updated**: 2025-10-25'
-mitigations: []
+name: Tool Enumeration
+severity: P1
+summary: 'Discovery of available tools, their capabilities, and input schemas'
+description: 'Tool Enumeration discovers the full set of available MCP tools, their capabilities,
+  input schemas, and permission requirements. Attackers use tools/list API calls and schema
+  introspection to map available functionality, identify privileged tools, and find tools with
+  weak input validation for subsequent exploitation.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1602-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1602.signal.tool_listing
+  description: Detects tool listing and capability discovery
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1602*'
-  - pattern: '*enumeration*'
-languages: []
+  - pattern: 'tools/list'
+  - regex: '(?:list|get|fetch|enumerate).*tools'
+    flags: i
+  - regex: 'client\.(?:listTools|list_tools|getTools|get_tools)\s*\('
+    flags: i
+  - regex: 'available_tools|registered_tools|tool_list'
+    flags: i
+  - pattern: 'capabilities/list'
+- id: SAFE-T1602.signal.schema_introspection
+  description: Detects tool schema introspection for attack surface mapping
+  heuristics:
+  - regex: 'tool.*(?:schema|inputSchema|parameters|definition)'
+    flags: i
+  - regex: '(?:describe|inspect|introspect).*tool'
+    flags: i
+  - regex: 'JSON\.parse.*(?:schema|definition|inputSchema)'
+    flags: i
+  - pattern: 'getToolSchema'
+  - pattern: 'tool_definitions'
+- id: SAFE-T1602.signal.permission_discovery
+  description: Detects tool permission and access level discovery
+  heuristics:
+  - regex: 'tool.*(?:permission|access|privilege|role|scope)'
+    flags: i
+  - regex: '(?:check|test|probe).*(?:permission|access|privilege)'
+    flags: i
+  - regex: 'canAccess|hasPermission|isAllowed'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

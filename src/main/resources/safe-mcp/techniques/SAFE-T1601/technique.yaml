@@ -1,25 +1,54 @@
 id: SAFE-T1601
-name: 'SAFE-T1601: MCP Server Enumeration'
-severity: high
-summary: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1601 **Severity**:
-  High **First Observed**: August 2025 (Research-based analysis) **Last Updated**:
-  2025-08-17'
-description: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1601 **Severity**:
-  High **First Observed**: August 2025 (Research-based analysis) **Last Updated**:
-  2025-08-17'
-mitigations: []
+name: MCP Server Enumeration
+severity: P1
+summary: 'Discovery of MCP server endpoints, registries, and service configurations'
+description: 'MCP Server Enumeration involves probing for available MCP server instances, scanning
+  registries, and discovering service endpoints. Attackers enumerate servers to map the attack
+  surface, identify vulnerable or misconfigured instances, and discover high-value targets for
+  subsequent exploitation.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1601-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1601.signal.server_discovery
+  description: Detects MCP server enumeration and registry scanning patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1601*'
-  - pattern: '*enumeration*'
-languages: []
+  - regex: '(?:list|enumerate|discover|scan).*(?:servers?|endpoints?|services?|instances?)'
+    flags: i
+  - regex: 'registry\.(?:list|search|query|scan)\s*\('
+    flags: i
+  - regex: 'mcp.*(?:discover|enumerate|list|scan)'
+    flags: i
+  - pattern: 'service_discovery'
+  - pattern: 'server_registry'
+- id: SAFE-T1601.signal.endpoint_probing
+  description: Detects endpoint probing and health check abuse
+  heuristics:
+  - regex: 'for\s.*(?:port|host|endpoint|url).*(?:fetch|request|connect|ping)'
+    flags: i
+  - regex: '(?:scan|probe|check).*(?:port|endpoint|host)'
+    flags: i
+  - regex: 'Promise\.all.*(?:fetch|request|connect)'
+    flags: i
+  - regex: '\.well-known/(?:mcp|oauth|openid)'
+    flags: i
+- id: SAFE-T1601.signal.config_exposure
+  description: Detects access to server configuration files
+  heuristics:
+  - regex: '(?:mcp|server).*(?:config|settings|manifest)\.(?:json|yaml|yml|toml)'
+    flags: i
+  - pattern: 'mcp.json'
+  - pattern: 'mcp-config'
+  - pattern: 'server.manifest'
+  - regex: 'readFile.*(?:mcp|server).*config'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

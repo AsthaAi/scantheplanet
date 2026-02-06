@@ -1,30 +1,59 @@
 id: SAFE-T1606
-name: 'SAFE-T1606: Directory Listing via File Tool'
-severity: medium
-summary: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1606 **Severity**:
-  High **First Observed**: 2024 **Last Updated**: 2025-11-26'
-description: '**Tactic**: Discovery (ATK-TA0007) **Technique ID**: SAFE-T1606 **Severity**:
-  High **First Observed**: 2024 **Last Updated**: 2025-11-26'
-mitigations: []
+name: Directory Listing via File Tool
+severity: P1
+summary: 'Unrestricted directory listing through file tools exposes filesystem structure'
+description: 'Directory Listing via File Tool exploits MCP file tools that allow unrestricted directory
+  enumeration. Attackers use fs.readdir, os.listdir, or equivalent functions to map the filesystem
+  structure, discover sensitive files, locate configuration files, and identify credential storage
+  locations for subsequent exploitation.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1606-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1606.signal.unrestricted_readdir
+  description: Detects unrestricted directory listing operations
   heuristics:
-  - pattern: list_directory
-  - pattern: ls
-  - pattern: dir
-  - pattern: filesystem_list_directory
-  - pattern: /etc
-  - pattern: /root
-  - pattern: C:\\Windows
-  - pattern: C:\\Users\\Administrator
-  - pattern: .ssh
-  - pattern: .aws
-languages: []
+  - regex: 'fs\.readdir(?:Sync)?\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'os\.listdir\s*\(\s*(?:req|request|params|input)'
+    flags: i
+  - regex: 'os\.walk\s*\(\s*(?:req|request|params|input)'
+    flags: i
+  - regex: 'glob\s*\(\s*(?:req|request|params|input)'
+    flags: i
+  - regex: 'filepath\.Walk\s*\(\s*(?:req|request|params|input)'
+    flags: i
+- id: SAFE-T1606.signal.recursive_listing
+  description: Detects recursive directory traversal patterns
+  heuristics:
+  - regex: 'readdir.*(?:recursive|recurse)'
+    flags: i
+  - regex: 'os\.walk\s*\('
+  - regex: 'glob\s*\(.*\*\*'
+  - regex: 'find\s.*-type\s+[fd]'
+  - regex: 'readdirSync.*forEach.*readdirSync'
+    flags: i
+- id: SAFE-T1606.signal.sensitive_dir_access
+  description: Detects listing of sensitive directories
+  heuristics:
+  - regex: 'readdir.*(?:/etc|/root|/home|/var|/tmp|/proc)'
+    flags: i
+  - regex: 'listdir.*(?:/etc|/root|/home|/var|/tmp|/proc)'
+    flags: i
+  - regex: 'readdir.*(?:\.ssh|\.aws|\.config|\.local)'
+    flags: i
+  - regex: 'listdir.*(?:\.ssh|\.aws|\.config|\.local)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
