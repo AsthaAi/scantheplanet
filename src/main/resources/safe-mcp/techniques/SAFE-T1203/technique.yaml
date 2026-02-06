@@ -1,24 +1,60 @@
 id: SAFE-T1203
-name: 'SAFE-T1203: Backdoored Server Binary'
-severity: high
-summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1203 **Severity**:
-  Critical **First Observed**: Not observed in production **Last Updated**: 2025-12-11'
-description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1203 **Severity**:
-  Critical **First Observed**: Not observed in production **Last Updated**: 2025-12-11'
-mitigations: []
+name: Backdoored Server Binary
+severity: P0
+summary: 'Trojanized MCP server artifacts with persistence mechanisms via install hooks'
+description: 'Backdoored Server Binary involves distributing trojanized MCP server packages, containers,
+  or binaries that establish persistence through postinstall hooks, cron jobs, systemd units, or
+  autostart entries. The malicious code executes during installation and persists even after the
+  package is uninstalled.'
+mitigations:
+- SAFE-M-2
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1203-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1203.signal.install_hooks
+  description: Detects suspicious install hooks that could establish persistence
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1203*'
-  - pattern: '*backdoored*'
-  - pattern: '*binary*'
-languages: []
+  - pattern: '"postinstall":'
+  - pattern: '"preinstall":'
+  - pattern: '"postuninstall":'
+  - regex: 'setup\.py.*(?:cmdclass|install_scripts|post_install)'
+    flags: i
+  - regex: 'postinstall.*(?:chmod|crontab|systemctl|launchctl)'
+    flags: i
+- id: SAFE-T1203.signal.persistence_mechanisms
+  description: Detects persistence mechanisms created during installation
+  heuristics:
+  - regex: 'crontab\s+-'
+  - regex: '/etc/cron\.\w+/'
+  - pattern: 'systemctl enable'
+  - pattern: 'systemctl start'
+  - regex: '\.service\s*\]'
+  - regex: 'LaunchAgents|LaunchDaemons'
+  - regex: 'HKEY.*\\\\Run'
+    flags: i
+  - pattern: '.bashrc'
+  - pattern: '.zshrc'
+  - pattern: '.profile'
+  - regex: 'autostart|startup'
+    flags: i
+- id: SAFE-T1203.signal.binary_integrity
+  description: Detects disabled integrity verification for downloaded binaries
+  heuristics:
+  - regex: 'checksum.*(?:skip|disable|false|ignore)'
+    flags: i
+  - regex: 'verify.*(?:skip|disable|false|ignore)'
+    flags: i
+  - regex: 'hash_check.*(?:false|disable|skip)'
+    flags: i
+  - pattern: 'GPG_VERIFY=false'
+  - pattern: '--no-check-certificate'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

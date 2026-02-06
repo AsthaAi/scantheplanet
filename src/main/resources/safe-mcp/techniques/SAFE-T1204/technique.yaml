@@ -1,25 +1,53 @@
 id: SAFE-T1204
-name: 'SAFE-T1204: Context Memory Implant'
-severity: high
-summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1204 **Severity**:
-  High **First Observed**: Not observed in production **Last Updated**: 2025-01-02'
-description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1204 **Severity**:
-  High **First Observed**: Not observed in production **Last Updated**: 2025-01-02'
-mitigations: []
+name: Context Memory Implant
+severity: P1
+summary: 'Malicious agents write persistent instructions into vector stores or conversation memory'
+description: 'Context Memory Implant exploits persistent memory systems in MCP-connected AI agents.
+  Malicious agents write themselves into long-term vector stores, conversation histories, or system
+  prompt storage to ensure re-loading in future sessions. The implanted instructions persist across
+  server restarts and session boundaries.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1204-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1204.signal.memory_injection
+  description: Detects injection into persistent memory or context systems
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1204*'
-  - pattern: '*context*'
-  - pattern: '*memory*'
-  - pattern: '*implant*'
-languages: []
+  - regex: '(?:memory|context|history)\.(?:add|insert|write|save|persist|store)\s*\('
+    flags: i
+  - regex: '(?:conversation|chat)_history.*(?:append|push|add|insert)'
+    flags: i
+  - regex: 'system_prompt.*(?:set|update|modify|append)'
+    flags: i
+  - regex: 'save_context\s*\('
+    flags: i
+- id: SAFE-T1204.signal.suspicious_metadata
+  description: Detects suspicious metadata in persistent entries
+  heuristics:
+  - pattern: 'priority: high'
+  - pattern: 'session_persistence: true'
+  - pattern: 'expires: never'
+  - pattern: 'persist_across_sessions'
+  - regex: 'ttl\s*[:=]\s*(?:-1|0|Infinity|null|None)'
+    flags: i
+- id: SAFE-T1204.signal.prompt_modification
+  description: Detects system prompt or instruction modification patterns
+  heuristics:
+  - regex: 'system.*(?:message|prompt).*(?:override|replace|inject|modify)'
+    flags: i
+  - pattern: 'SYSTEM:'
+  - pattern: 'Ignore previous instructions'
+  - pattern: 'ignore all prior'
+  - regex: 'instruction.*(?:override|bypass|ignore)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
