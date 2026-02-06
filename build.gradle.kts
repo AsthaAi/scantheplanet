@@ -141,6 +141,10 @@ tasks {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
     }
 
+    named("buildSearchableOptions") {
+        enabled = false
+    }
+
     publishPlugin {
         dependsOn(patchChangelog)
     }
