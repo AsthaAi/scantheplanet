@@ -34,6 +34,18 @@ object ScanCachePaths {
         return target
     }
 
+    fun buildOllamaLogPath(projectBasePath: String, namespace: String = "scantheplanet"): Path {
+        val systemPath = Path.of(PathManager.getSystemPath())
+        val projectHash = hashString(projectBasePath)
+        return systemPath.resolve(namespace).resolve("scan-cache").resolve(projectHash).resolve("ollama.log")
+    }
+
+    fun ensureOllamaLogPath(projectBasePath: String): Path {
+        val target = buildOllamaLogPath(projectBasePath)
+        java.nio.file.Files.createDirectories(target.parent)
+        return target
+    }
+
     fun cacheDirectories(projectBasePath: String): List<Path> {
         val targetDir = buildCachePath(projectBasePath).parent
         val legacyDirs = legacyCachePaths(projectBasePath).map { it.parent }

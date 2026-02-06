@@ -14,7 +14,12 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.time.Duration
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 class OllamaModel(
     private val modelName: String,
@@ -41,7 +46,7 @@ class OllamaModel(
                 mapOf("role" to "user", "content" to userContent)
             )
         )
-        body["max_tokens"] = 700
+        body["max_tokens"] = 1200
 
         val requestBody = mapper.writeValueAsString(body)
         val request = HttpRequest.newBuilder(URI(endpoint.trimEnd('/') + "/v1/chat/completions"))
@@ -56,7 +61,18 @@ class OllamaModel(
         var retryCount = 0
         val findings = try {
             withRetry(RetryConfig.fromEnv("OLLAMA", config), { _, _ -> retryCount += 1 }) {
-                val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                val response = try {
+                    client.send(request, HttpResponse.BodyHandlers.ofString())
+                } catch (e: Exception) {
+                    appendOllamaExchangeLog(requestId, requestBody, error = "${e.javaClass.simpleName}: ${e.message}")
+                    throw e
+                }
+                appendOllamaExchangeLog(
+                    requestId = requestId,
+                    requestBody = requestBody,
+                    responseStatus = response.statusCode(),
+                    responseBody = response.body()
+                )
                 if (response.statusCode() !in 200..299) {
                     val bodySnippet = truncateBody(response.body())
                     logger.warn(
@@ -73,13 +89,27 @@ class OllamaModel(
                 }
                 val choices = root.path("choices")
                 val content = if (choices.isArray && choices.size() > 0) {
-                    choices[0].path("message").path("content").asText()
+                    choices[0].path("message").path("content").asText("")
                 } else {
-                    null
-                } ?: throw CodeModelException("Ollama response missing content")
+                    ""
+                }
+                if (content.isBlank()) {
+                    logger.warn(
+                        "LLM response had empty content: id=$requestId provider=Ollama model=$modelName " +
+                            "chunk=${prompt.codeChunk.id}; returning no findings"
+                    )
+                    return@withRetry emptyList<ModelFinding>()
+                }
                 try {
                     ModelResponseParser.parseFindings(content, prompt, modelName)
                 } catch (e: Exception) {
+                    if (e.message?.contains("missing findings array") == true) {
+                        logger.warn(
+                            "LLM response missing findings array: id=$requestId provider=Ollama model=$modelName " +
+                                "chunk=${prompt.codeChunk.id}; returning no findings"
+                        )
+                        return@withRetry emptyList<ModelFinding>()
+                    }
                     throw CodeModelException("Ollama response invalid JSON: ${e.message}", e)
                 }
             }
@@ -110,7 +140,7 @@ class OllamaModel(
                 mapOf("role" to "user", "content" to userContent)
             )
         )
-        body["max_tokens"] = 700
+        body["max_tokens"] = 1200
 
         val requestBody = mapper.writeValueAsString(body)
         val request = HttpRequest.newBuilder(URI(endpoint.trimEnd('/') + "/v1/chat/completions"))
@@ -125,7 +155,18 @@ class OllamaModel(
         var retryCount = 0
         val findings = try {
             withRetry(RetryConfig.fromEnv("OLLAMA", config), { _, _ -> retryCount += 1 }) {
-                val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                val response = try {
+                    client.send(request, HttpResponse.BodyHandlers.ofString())
+                } catch (e: Exception) {
+                    appendOllamaExchangeLog(requestId, requestBody, error = "${e.javaClass.simpleName}: ${e.message}")
+                    throw e
+                }
+                appendOllamaExchangeLog(
+                    requestId = requestId,
+                    requestBody = requestBody,
+                    responseStatus = response.statusCode(),
+                    responseBody = response.body()
+                )
                 if (response.statusCode() !in 200..299) {
                     val bodySnippet = truncateBody(response.body())
                     logger.warn(
@@ -142,13 +183,27 @@ class OllamaModel(
                 }
                 val choices = root.path("choices")
                 val content = if (choices.isArray && choices.size() > 0) {
-                    choices[0].path("message").path("content").asText()
+                    choices[0].path("message").path("content").asText("")
                 } else {
-                    null
-                } ?: throw CodeModelException("Ollama response missing content")
+                    ""
+                }
+                if (content.isBlank()) {
+                    logger.warn(
+                        "LLM response had empty content: id=$requestId provider=Ollama model=$modelName " +
+                            "chunk=${prompt.codeChunk.id}; returning no findings"
+                    )
+                    return@withRetry emptyList<ModelFinding>()
+                }
                 try {
                     ModelResponseParser.parseFindingsBatch(content, prompt, modelName)
                 } catch (e: Exception) {
+                    if (e.message?.contains("missing findings array") == true) {
+                        logger.warn(
+                            "LLM response missing findings array: id=$requestId provider=Ollama model=$modelName " +
+                                "chunk=${prompt.codeChunk.id}; returning no findings"
+                        )
+                        return@withRetry emptyList<ModelFinding>()
+                    }
                     throw CodeModelException("Ollama response invalid JSON: ${e.message}", e)
                 }
             }
@@ -172,5 +227,45 @@ class OllamaModel(
         if (body.isNullOrBlank()) return "<empty>"
         val sanitized = body.replace(Regex("\\s+"), " ").trim()
         return if (sanitized.length <= max) sanitized else sanitized.substring(0, max) + "…"
+    }
+
+    private fun appendOllamaExchangeLog(
+        requestId: String,
+        requestBody: String,
+        responseStatus: Int? = null,
+        responseBody: String? = null,
+        error: String? = null
+    ) {
+        if (!config.ollamaLoggingEnabled) return
+        val targetPath = config.ollamaLogPath?.trim().orEmpty()
+        if (targetPath.isEmpty()) return
+
+        val entry = buildString {
+            append("===\n")
+            append("timestamp=").append(ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)).append('\n')
+            append("provider=ollama id=").append(requestId).append(" model=").append(modelName).append('\n')
+            append("endpoint=").append(endpoint.trimEnd('/')).append("/v1/chat/completions").append('\n')
+            append("request:\n").append(requestBody).append('\n')
+            if (responseStatus != null) {
+                append("response_status=").append(responseStatus).append('\n')
+            }
+            if (!responseBody.isNullOrBlank()) {
+                append("response:\n").append(responseBody).append('\n')
+            }
+            if (!error.isNullOrBlank()) {
+                append("error=").append(error).append('\n')
+            }
+        }
+
+        try {
+            val path = Path.of(targetPath)
+            val parent = path.parent
+            if (parent != null) {
+                Files.createDirectories(parent)
+            }
+            Files.writeString(path, entry, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+        } catch (e: Exception) {
+            logger.warn("Failed to write Ollama exchange log: ${e.message}")
+        }
     }
 }

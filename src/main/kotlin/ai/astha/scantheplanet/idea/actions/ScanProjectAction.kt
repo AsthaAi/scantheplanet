@@ -12,7 +12,7 @@ class ScanProjectAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         project.service<ScannerService>().scanProject()
-        ToolWindowManager.getInstance(project).getToolWindow("Scan The Planet")?.show()
+        ToolWindowManager.getInstance(project).getToolWindow("Scan The Planet by Astha")?.show()
     }
 
     override fun update(e: AnActionEvent) {

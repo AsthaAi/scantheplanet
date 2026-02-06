@@ -203,6 +203,7 @@ private class ScannerToolWindowPanel(private val project: Project) : JBPanel<Sca
         }
         stopButton.addActionListener {
             appendLog("Stop button clicked.")
+            stopButton.isEnabled = false
             scannerService.cancelScan()
         }
         copyAllButton.addActionListener {
@@ -308,7 +309,8 @@ private class ScannerToolWindowPanel(private val project: Project) : JBPanel<Sca
 
     private fun updateReport(report: ScanReport) {
         runOnEdt {
-            val running = report.status == "running"
+            val cancelling = report.status == "running" && report.summary.startsWith("Cancelling")
+            val running = report.status == "running" && !cancelling
             stopButton.isEnabled = running
             scanButton.isEnabled = !running
             tableModel.setRowCount(0)

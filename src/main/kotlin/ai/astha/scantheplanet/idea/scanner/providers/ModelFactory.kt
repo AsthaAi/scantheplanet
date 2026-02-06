@@ -21,7 +21,7 @@ object ModelFactory {
                 ?: config.modelNames?.firstOrNull()
                 ?: defaultModelForProvider(normalized)
             val endpoint = config.ollamaEndpoint ?: ScannerConfigDefaults.DEFAULT_OLLAMA_ENDPOINT
-            return OllamaModel(resolvedModel, config, endpoint)
+            return OllamaModel(resolvedModel, config, endpoint, timeoutSeconds = resolveTimeoutSeconds(config))
         }
         if (normalized !in setOf("openai", "anthropic", "gemini")) {
             throw IllegalArgumentException("unsupported provider: $normalized")
@@ -43,11 +43,16 @@ object ModelFactory {
             ?: defaultModelForProvider(normalized)
 
         return when (normalized) {
-            "openai" -> OpenAIModel(resolvedModel, key, config)
-            "anthropic" -> AnthropicModel(resolvedModel, key, config)
-            "gemini" -> GeminiModel(resolvedModel, key, config)
+            "openai" -> OpenAIModel(resolvedModel, key, config, timeoutSeconds = resolveTimeoutSeconds(config))
+            "anthropic" -> AnthropicModel(resolvedModel, key, config, timeoutSeconds = resolveTimeoutSeconds(config))
+            "gemini" -> GeminiModel(resolvedModel, key, config, timeoutSeconds = resolveTimeoutSeconds(config))
             else -> LocalModel()
         }
+    }
+
+    private fun resolveTimeoutSeconds(config: ScannerConfig): Long {
+        val timeoutMs = config.timeoutMs ?: 60_000L
+        return (timeoutMs / 1000L).coerceAtLeast(1L)
     }
 
     private fun enforceProviderAllowlist(config: ScannerConfig, provider: String) {

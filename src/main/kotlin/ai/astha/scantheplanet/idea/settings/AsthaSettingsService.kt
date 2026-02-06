@@ -28,6 +28,26 @@ class AsthaSettingsService : PersistentStateComponent<AsthaSettingsState> {
                 this.state.techniques = mutableListOf("SAFE-T0001")
             }
         }
+        if (!this.state.providerParallelismInitialized) {
+            val legacyParallelism = this.state.chunkParallelism.coerceAtLeast(1)
+            val legacyParallelismMax = this.state.chunkParallelismMax.coerceAtLeast(legacyParallelism)
+            this.state.openaiChunkParallelism = legacyParallelism
+            this.state.openaiChunkParallelismMax = legacyParallelismMax
+            this.state.ollamaChunkParallelism = 1
+            this.state.ollamaChunkParallelismMax = 1
+            this.state.providerParallelismInitialized = true
+        }
+        if (!this.state.providerModelInitialized) {
+            val legacyModel = this.state.modelName.trim()
+            if (this.state.provider == LlmProvider.OLLAMA) {
+                this.state.ollamaModelName = legacyModel.ifBlank { "llama3.1" }
+                this.state.openaiModelName = "gpt-5.2"
+            } else {
+                this.state.openaiModelName = legacyModel.ifBlank { "gpt-5.2" }
+                this.state.ollamaModelName = "llama3.1"
+            }
+            this.state.providerModelInitialized = true
+        }
     }
 
     fun saveLlmToken(providerId: String, token: String?) {

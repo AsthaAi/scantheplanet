@@ -181,7 +181,7 @@ Rules:
 
     private fun parseAndFilter(content: String, original: List<ScanFinding>): List<ScanFinding> {
         return try {
-            val jsonText = ai.astha.scantheplanet.idea.scanner.evidence.EvidenceParser.extractJsonObject(content) ?: content
+            val jsonText = ai.astha.scantheplanet.idea.scanner.evidence.EvidenceParser.extractJsonObject(content, "findings") ?: content
             val node = mapper.readTree(jsonText)
             val findingsNode = node.get("findings") ?: return original
             if (!findingsNode.isArray) return original

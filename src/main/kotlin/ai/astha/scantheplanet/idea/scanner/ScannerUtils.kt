@@ -12,6 +12,34 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 
 object ScannerUtils {
+    private val sourceCodeExtensions = setOf(
+        "c", "h", "cc", "cpp", "cxx", "hpp", "hh",
+        "cs",
+        "dart",
+        "go",
+        "groovy", "gradle",
+        "java",
+        "jl",
+        "js", "jsx", "mjs", "cjs",
+        "kt", "kts",
+        "lua",
+        "m", "mm",
+        "php",
+        "pl", "pm",
+        "ps1", "bat", "cmd",
+        "py",
+        "r",
+        "rb",
+        "rs",
+        "scala", "sc",
+        "sh", "bash", "zsh",
+        "sql",
+        "swift",
+        "ts", "tsx"
+    )
+
+    fun sourceCodeExtensions(): Set<String> = sourceCodeExtensions
+
     fun collectFiles(repoPath: Path, filters: PathFilters): List<Path> {
         val root = repoPath.normalize()
         if (!root.isDirectory()) return emptyList()
@@ -56,8 +84,10 @@ object ScannerUtils {
         if (filters.excludeExtensions.isNotEmpty() && ext.isNotEmpty() && filters.excludeExtensions.contains(ext)) {
             return false
         }
-        if (filters.includeExtensions.isNotEmpty() && ext.isNotEmpty() && !filters.includeExtensions.contains(ext)) {
-            return false
+        if (filters.includeExtensions.isNotEmpty()) {
+            if (ext.isEmpty() || !filters.includeExtensions.contains(ext)) {
+                return false
+            }
         }
 
         val pathString = relativePath.toString()

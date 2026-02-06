@@ -9,30 +9,16 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="ai.astha.scantheplanet.idea.toolWindow.ScannerToolWindowFactory" id="Scan The Planet"/>
-        <projectConfigurable instance="ai.astha.scantheplanet.idea.settings.AsthaSettingsConfigurable"/>
-        <applicationConfigurable instance="ai.astha.scantheplanet.idea.settings.OAuthConfigurable"/>
-        <httpRequestHandler implementation="ai.astha.scantheplanet.idea.oauth.CallbackRestService"/>
-        <notificationGroup id="Scan The Planet OAuth" displayType="BALLOON" isLogByDefault="false"/>
+        <toolWindow factoryClass="ai.astha.scantheplanet.idea.toolWindow.ScannerToolWindowFactory" id="Scan The Planet by Astha"/>
+        <projectConfigurable instance="ai.astha.scantheplanet.idea.settings.AsthaSettingsConfigurable"
+                             displayName="Scan The Planet"/>
     </extensions>
 
     <actions>
         <action id="ai.astha.scantheplanet.idea.actions.ScanProjectAction"
                 class="ai.astha.scantheplanet.idea.actions.ScanProjectAction"
                 text="Scan"
-                description="Run compliance/security scan for the current project">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-        <action id="ai.astha.scantheplanet.idea.actions.SignInAction"
-                class="ai.astha.scantheplanet.idea.actions.SignInAction"
-                text="Sign in..."
-                description="Sign in with OAuth">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-        <action id="ai.astha.scantheplanet.idea.actions.SignOutAction"
-                class="ai.astha.scantheplanet.idea.actions.SignOutAction"
-                text="Sign out"
-                description="Sign out and clear OAuth tokens">
+                description="Scan the current project for Agentic AI and MCP security risks using SAFE-MCP techniques">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>

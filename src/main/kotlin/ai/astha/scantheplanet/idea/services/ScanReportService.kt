@@ -54,6 +54,9 @@ class ScanReportService(private val project: Project) : PersistentStateComponent
 
     override fun loadState(state: ScanReportState) {
         XmlSerializerUtil.copyBean(state, this.state)
+        if (this.state.status == "running") {
+            this.state = ScanReportState()
+        }
     }
 
     fun update(report: ScanReport) {

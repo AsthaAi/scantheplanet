@@ -11,7 +11,7 @@ object ModelResponseParser {
     private val mapper = ObjectMapper()
 
     fun parseFindings(content: String, prompt: PromptPayload, modelName: String): List<ModelFinding> {
-        val jsonText = EvidenceParser.extractJsonObject(content) ?: content.trim()
+        val jsonText = EvidenceParser.extractJsonObject(content, "findings") ?: content.trim()
         val node = mapper.readTree(jsonText)
         val findingsNode = node.get("findings")
             ?: throw CodeModelException("Invalid LLM response: missing findings array")
@@ -49,7 +49,7 @@ object ModelResponseParser {
     }
 
     fun parseFindingsBatch(content: String, prompt: BatchPromptPayload, modelName: String): List<ModelFinding> {
-        val jsonText = EvidenceParser.extractJsonObject(content) ?: content.trim()
+        val jsonText = EvidenceParser.extractJsonObject(content, "findings") ?: content.trim()
         val node = mapper.readTree(jsonText)
         val findingsNode = node.get("findings")
             ?: throw CodeModelException("Invalid LLM response: missing findings array")

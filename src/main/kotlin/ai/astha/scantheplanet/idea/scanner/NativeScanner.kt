@@ -11,6 +11,12 @@ import ai.astha.scantheplanet.idea.scanner.prompt.PromptPayload
 import ai.astha.scantheplanet.idea.scanner.providers.ModelFactory
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorCompletionService
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class NativeScanner(
     private val repository: SafeMcpRepository,
@@ -48,6 +54,9 @@ class NativeScanner(
                 findings = emptyList()
             )
         }
+        val chunkExecutor = createChunkExecutor()
+        var batchExecutor: ExecutorService? = null
+        try {
         val validated = validation.techniques.associateBy { it.id }
         val findings = mutableListOf<ScanFinding>()
         val summaries = mutableListOf<String>()
@@ -64,6 +73,9 @@ class NativeScanner(
         if (batchEnabled) {
             val batches = techniqueIds.chunked(batchSize.coerceAtLeast(1))
             val totalBatches = batches.size
+            batchExecutor = createBatchExecutor(totalBatches)
+            val completion = ExecutorCompletionService<ScanBatch>(batchExecutor)
+            var submitted = 0
             for ((batchIndex, batchIds) in batches.withIndex()) {
                 if (shouldCancel()) throw ScanCancelledException()
                 val techniques = batchIds.mapNotNull { id ->
@@ -79,40 +91,57 @@ class NativeScanner(
                     techniqueNames.putIfAbsent(tech.id, tech.name)
                 }
 
-                val filters = adjustFiltersForScope(buildFilters(config), scope)
-                val files = when (scope) {
-                    is ScopeKind.FullRepo -> ScannerUtils.collectFiles(repoPath, filters)
-                    is ScopeKind.File -> listOf(scope.file)
-                    is ScopeKind.Selection -> listOf(scope.file)
-                    is ScopeKind.OpenFiles -> scope.files
-                    is ScopeKind.GitDiff -> {
-                        val changed = ScannerUtils.gitChangedFiles(repoPath, scope.baseRef, scope.includeUntracked)
-                        changed.toList()
-                    }
-                }
                 val batchSignature = hashString(techniqueHasher.writeValueAsString(techniques))
                 val modelLineCap = selectMaxLinesPerChunk(model.name, maxLinesPerChunk)
                 val batchLabel = "Batch ${batchIndex + 1} of $totalBatches"
                 val batchName = techniques.joinToString(", ") { it.name }.take(200)
-                val batchResult = scanFilesBatch(
-                    files,
-                    repoPath,
-                    techniques,
-                    batchSignature,
-                    provider,
-                    scope,
-                    modelLineCap,
-                    filters,
-                    model,
-                    diffAddedLines,
-                    shouldCancel,
-                    progress,
-                    gatingByTechnique,
-                    batchLabel,
-                    batchName,
-                    batchIndex + 1,
-                    totalBatches
-                )
+                val batchIndexOneBased = batchIndex + 1
+                completion.submit {
+                    if (shouldCancel()) throw ScanCancelledException()
+                    val filters = adjustFiltersForScope(buildFilters(config, scope), scope)
+                    val files = when (scope) {
+                        is ScopeKind.FullRepo -> ScannerUtils.collectFiles(repoPath, filters)
+                        is ScopeKind.File -> listOf(scope.file)
+                        is ScopeKind.Selection -> listOf(scope.file)
+                        is ScopeKind.OpenFiles -> scope.files
+                        is ScopeKind.GitDiff -> {
+                            val changed = ScannerUtils.gitChangedFiles(repoPath, scope.baseRef, scope.includeUntracked)
+                            changed.toList()
+                        }
+                    }
+                    scanFilesBatch(
+                        files,
+                        repoPath,
+                        techniques,
+                        batchSignature,
+                        provider,
+                        scope,
+                        modelLineCap,
+                        filters,
+                        model,
+                        diffAddedLines,
+                        shouldCancel,
+                        progress,
+                        gatingByTechnique,
+                        chunkExecutor,
+                        batchLabel,
+                        batchName,
+                        batchIndexOneBased,
+                        totalBatches
+                    )
+                }
+                submitted += 1
+            }
+            repeat(submitted) {
+                if (shouldCancel()) throw ScanCancelledException()
+                val batchResult = try {
+                    completion.take().get()
+                } catch (e: ExecutionException) {
+                    val cause = e.cause
+                    if (cause is ScanCancelledException) throw cause
+                    if (cause is RuntimeException) throw cause
+                    throw RuntimeException(cause)
+                }
                 filesScannedTotal += batchResult.filesScanned
                 chunksAnalyzedTotal += batchResult.chunksAnalyzed
                 chunksFailedTotal += batchResult.chunksFailed
@@ -147,7 +176,7 @@ class NativeScanner(
                     continue
                 }
 
-                val filters = adjustFiltersForScope(buildFilters(config), scope)
+                val filters = adjustFiltersForScope(buildFilters(config, scope), scope)
                 val files = when (scope) {
                     is ScopeKind.FullRepo -> ScannerUtils.collectFiles(repoPath, filters)
                     is ScopeKind.File -> listOf(scope.file)
@@ -174,6 +203,7 @@ class NativeScanner(
                     diffAddedLines,
                     shouldCancel,
                     progress,
+                    chunkExecutor,
                     technique.id,
                     technique.name,
                     index + 1,
@@ -222,6 +252,41 @@ class NativeScanner(
         }
         cache?.flush()
         return summary
+        } finally {
+            batchExecutor?.shutdown()
+            batchExecutor?.awaitTermination(30, TimeUnit.SECONDS)
+            chunkExecutor.shutdown()
+            chunkExecutor.awaitTermination(30, TimeUnit.SECONDS)
+        }
+    }
+
+    private fun createChunkExecutor(): ExecutorService {
+        val parallelism = resolveChunkParallelism()
+        val counter = AtomicInteger(0)
+        return Executors.newFixedThreadPool(parallelism) { runnable ->
+            val thread = Thread(runnable, "scanner-chunk-${counter.incrementAndGet()}")
+            thread.isDaemon = true
+            thread
+        }
+    }
+
+    private fun createBatchExecutor(totalBatches: Int): ExecutorService {
+        val cap = config.chunkParallelismMax?.takeIf { it > 0 } ?: 10
+        val poolSize = totalBatches.coerceAtMost(cap).coerceAtLeast(1)
+        val counter = AtomicInteger(0)
+        return Executors.newFixedThreadPool(poolSize) { runnable ->
+            val thread = Thread(runnable, "scanner-batch-${counter.incrementAndGet()}")
+            thread.isDaemon = true
+            thread
+        }
+    }
+
+    private fun resolveChunkParallelism(): Int {
+        val configured = config.chunkParallelism?.takeIf { it > 0 }
+        val defaultParallelism = 10
+        val requested = configured ?: defaultParallelism
+        val maxCap = config.chunkParallelismMax?.takeIf { it > 0 } ?: defaultParallelism
+        return requested.coerceAtMost(maxCap)
     }
 
     private fun loadTechnique(id: String): TechniqueSpec? {
@@ -257,6 +322,7 @@ class NativeScanner(
         diffAddedLines: Map<Path, Set<Int>>,
         cancelRequested: () -> Boolean,
         progress: ((ScanProgress) -> Unit)?,
+        executor: ExecutorService,
         techniqueId: String,
         techniqueName: String,
         techniqueIndex: Int,
@@ -264,10 +330,13 @@ class NativeScanner(
     ): ScanBatch {
         val findings = mutableListOf<ScanFinding>()
         val filesScanned = mutableSetOf<Path>()
-        var chunksAnalyzed = 0
-        var chunksFailed = 0
+        val chunksAnalyzed = AtomicInteger(0)
+        val chunksFailed = AtomicInteger(0)
+        val completion = ExecutorCompletionService<List<ScanFinding>>(executor)
+        var submitted = 0
         val estimator = PromptTokenEstimator(providerName, model.name)
         val gatingStats = if (config.gatingEnabled == true || (config.shadowSampleRate ?: 0.0) > 0.0) GatingStats() else null
+        val gatingLock = Any()
         val rng = java.util.Random()
         val totalFiles = files.size
         var processedFiles = 0
@@ -292,8 +361,8 @@ class NativeScanner(
                     null,
                     processedFiles,
                     totalFiles,
-                    chunksAnalyzed,
-                    chunksFailed,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
                     lastProgressAt
                 ).also {
                     if (it) lastProgressAt = processedFiles
@@ -311,8 +380,8 @@ class NativeScanner(
                     null,
                     processedFiles,
                     totalFiles,
-                    chunksAnalyzed,
-                    chunksFailed,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
                     lastProgressAt
                 ).also {
                     if (it) lastProgressAt = processedFiles
@@ -354,9 +423,11 @@ class NativeScanner(
                 buildChunksFixed(relative, lines, lineRange, maxLinesPerChunk, includeLines)
             }
             RuleHints.applyRuleHints(technique, chunks)
-            val modelFindings = chunks.flatMap { chunk ->
+            for (chunk in chunks) {
                 if (cancelRequested()) throw ScanCancelledException()
-                gatingStats?.totalChunks = (gatingStats?.totalChunks ?: 0) + 1
+                synchronized(gatingLock) {
+                    gatingStats?.totalChunks = (gatingStats?.totalChunks ?: 0) + 1
+                }
                 var shadowed = false
                 if (chunk.ruleHints.isEmpty() && !technique.llmRequired) {
                     val gatingEnabled = config.gatingEnabled == true
@@ -364,15 +435,21 @@ class NativeScanner(
                     if (gatingEnabled) {
                         if (sampleRate > 0.0 && rng.nextDouble() <= sampleRate) {
                             shadowed = true
-                            gatingStats?.shadowChunks = (gatingStats?.shadowChunks ?: 0) + 1
+                            synchronized(gatingLock) {
+                                gatingStats?.shadowChunks = (gatingStats?.shadowChunks ?: 0) + 1
+                            }
                         } else {
-                            gatingStats?.gatedChunks = (gatingStats?.gatedChunks ?: 0) + 1
-                            return@flatMap emptyList()
+                            synchronized(gatingLock) {
+                                gatingStats?.gatedChunks = (gatingStats?.gatedChunks ?: 0) + 1
+                            }
+                            continue
                         }
                     }
                 }
-                chunksAnalyzed += 1
-                gatingStats?.llmChunks = (gatingStats?.llmChunks ?: 0) + 1
+                chunksAnalyzed.incrementAndGet()
+                synchronized(gatingLock) {
+                    gatingStats?.llmChunks = (gatingStats?.llmChunks ?: 0) + 1
+                }
                 maybeReportProgress(
                     progress,
                     techniqueId,
@@ -383,8 +460,8 @@ class NativeScanner(
                     chunk.id,
                     processedFiles,
                     totalFiles,
-                    chunksAnalyzed,
-                    chunksFailed,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
                     lastProgressAt
                 ).also {
                     if (it) lastProgressAt = processedFiles
@@ -408,11 +485,12 @@ class NativeScanner(
                         chunk.id,
                         processedFiles,
                         totalFiles,
-                        chunksAnalyzed,
-                        chunksFailed,
+                        chunksAnalyzed.get(),
+                        chunksFailed.get(),
                         ai.astha.scantheplanet.idea.scanner.ChunkStatus.CACHED
                     )
-                    return@flatMap cached
+                    findings.addAll(cached.map { it.toScanFinding(technique.id, technique.name) })
+                    continue
                 }
                 val payload = PromptPayload(
                     techniqueId = technique.id,
@@ -431,20 +509,26 @@ class NativeScanner(
                     ),
                     readmeExcerpt = readmeExcerpt
                 )
-                try {
-                    val findings = model.analyzeChunk(payload)
-                    if (shadowed && findings.isNotEmpty()) {
-                        gatingStats?.shadowFindings = (gatingStats?.shadowFindings ?: 0) + findings.size
+                val shadowedChunk = shadowed
+                completion.submit {
+                    if (cancelRequested()) throw ScanCancelledException()
+                    try {
+                        val result = model.analyzeChunk(payload)
+                        if (shadowedChunk && result.isNotEmpty()) {
+                            synchronized(gatingLock) {
+                                gatingStats?.shadowFindings = (gatingStats?.shadowFindings ?: 0) + result.size
+                            }
+                        }
+                        cache?.put(cacheKey, result)
+                        cache?.flushMaybe()
+                        result.map { it.toScanFinding(technique.id, technique.name) }
+                    } catch (e: Exception) {
+                        chunksFailed.incrementAndGet()
+                        throw e
                     }
-                    cache?.put(cacheKey, findings)
-                    cache?.flushMaybe()
-                    findings
-                } catch (e: Exception) {
-                    chunksFailed += 1
-                    throw e
                 }
+                submitted += 1
             }
-            findings.addAll(modelFindings.map { it.toScanFinding(technique.id, technique.name) })
             if (chunks.isNotEmpty()) {
                 filesScanned.add(relative)
             }
@@ -458,15 +542,26 @@ class NativeScanner(
                 null,
                 processedFiles,
                 totalFiles,
-                chunksAnalyzed,
-                chunksFailed,
+                chunksAnalyzed.get(),
+                chunksFailed.get(),
                 lastProgressAt
             ).also {
                 if (it) lastProgressAt = processedFiles
             }
         }
 
-        return ScanBatch(findings, filesScanned.size, chunksAnalyzed, chunksFailed, gatingStats)
+        repeat(submitted) {
+            try {
+                findings.addAll(completion.take().get())
+            } catch (e: ExecutionException) {
+                val cause = e.cause
+                if (cause is ScanCancelledException) throw cause
+                if (cause is RuntimeException) throw cause
+                throw RuntimeException(cause)
+            }
+        }
+
+        return ScanBatch(findings, filesScanned.size, chunksAnalyzed.get(), chunksFailed.get(), gatingStats)
     }
 
     private fun scanFilesBatch(
@@ -483,6 +578,7 @@ class NativeScanner(
         cancelRequested: () -> Boolean,
         progress: ((ScanProgress) -> Unit)?,
         gatingByTechnique: MutableMap<String, GatingStats>,
+        executor: ExecutorService,
         batchLabel: String,
         batchName: String,
         batchIndex: Int,
@@ -490,9 +586,12 @@ class NativeScanner(
     ): ScanBatch {
         val findings = mutableListOf<ScanFinding>()
         val filesScanned = mutableSetOf<Path>()
-        var chunksAnalyzed = 0
-        var chunksFailed = 0
+        val chunksAnalyzed = AtomicInteger(0)
+        val chunksFailed = AtomicInteger(0)
+        val completion = ExecutorCompletionService<List<ScanFinding>>(executor)
+        var submitted = 0
         val estimator = PromptTokenEstimator(providerName, model.name)
+        val gatingMapLock = Any()
         val totalFiles = files.size
         var processedFiles = 0
         var lastProgressAt = 0
@@ -517,8 +616,8 @@ class NativeScanner(
                     null,
                     processedFiles,
                     totalFiles,
-                    chunksAnalyzed,
-                    chunksFailed,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
                     lastProgressAt
                 ).also {
                     if (it) lastProgressAt = processedFiles
@@ -537,8 +636,8 @@ class NativeScanner(
                     null,
                     processedFiles,
                     totalFiles,
-                    chunksAnalyzed,
-                    chunksFailed,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
                     lastProgressAt
                 ).also {
                     if (it) lastProgressAt = processedFiles
@@ -581,8 +680,12 @@ class NativeScanner(
                 var gated = true
                 for (tech in eligibleTechniques) {
                     val hints = hintsForChunk[tech.id].orEmpty()
-                    val stats = gatingByTechnique.getOrPut(tech.id) { GatingStats() }
-                    stats.totalChunks += 1
+                    val stats = synchronized(gatingMapLock) {
+                        gatingByTechnique.getOrPut(tech.id) { GatingStats() }
+                    }
+                    synchronized(stats) {
+                        stats.totalChunks += 1
+                    }
                     if (hints.isNotEmpty() || tech.llmRequired || config.gatingEnabled != true) {
                         gated = false
                     }
@@ -597,8 +700,12 @@ class NativeScanner(
 
                 if (config.gatingEnabled == true && gated) {
                     for (tech in eligibleTechniques) {
-                        val stats = gatingByTechnique.getOrPut(tech.id) { GatingStats() }
-                        stats.gatedChunks += 1
+                        val stats = synchronized(gatingMapLock) {
+                            gatingByTechnique.getOrPut(tech.id) { GatingStats() }
+                        }
+                        synchronized(stats) {
+                            stats.gatedChunks += 1
+                        }
                     }
                     continue
                 }
@@ -610,8 +717,12 @@ class NativeScanner(
                         continue
                     }
                     if (shadowed && hints.isEmpty() && !tech.llmRequired) {
-                        val stats = gatingByTechnique.getOrPut(tech.id) { GatingStats() }
-                        stats.shadowChunks += 1
+                        val stats = synchronized(gatingMapLock) {
+                            gatingByTechnique.getOrPut(tech.id) { GatingStats() }
+                        }
+                        synchronized(stats) {
+                            stats.shadowChunks += 1
+                        }
                     }
                     val mitigations = tech.mitigations.map { mitigationId ->
                         val description = repository.readMitigationReadme(mitigationId)?.lines()?.drop(1)?.joinToString("\n")
@@ -631,30 +742,34 @@ class NativeScanner(
                     )
                 }
 
-            if (activeTechniques.isEmpty()) {
-                continue
-            }
+                if (activeTechniques.isEmpty()) {
+                    continue
+                }
 
-            chunksAnalyzed += 1
-            maybeReportProgress(
-                progress,
-                batchLabel,
-                batchName,
-                batchIndex,
-                totalBatches,
-                relative.toString(),
-                chunk.id,
-                processedFiles,
-                totalFiles,
-                chunksAnalyzed,
-                chunksFailed,
-                lastProgressAt
-            ).also {
-                if (it) lastProgressAt = processedFiles
-            }
-            for (tech in activeTechniques) {
-                val stats = gatingByTechnique.getOrPut(tech.id) { GatingStats() }
-                stats.llmChunks += 1
+                chunksAnalyzed.incrementAndGet()
+                maybeReportProgress(
+                    progress,
+                    batchLabel,
+                    batchName,
+                    batchIndex,
+                    totalBatches,
+                    relative.toString(),
+                    chunk.id,
+                    processedFiles,
+                    totalFiles,
+                    chunksAnalyzed.get(),
+                    chunksFailed.get(),
+                    lastProgressAt
+                ).also {
+                    if (it) lastProgressAt = processedFiles
+                }
+                for (tech in activeTechniques) {
+                    val stats = synchronized(gatingMapLock) {
+                        gatingByTechnique.getOrPut(tech.id) { GatingStats() }
+                    }
+                    synchronized(stats) {
+                        stats.llmChunks += 1
+                    }
                 }
                 val cacheKey = buildCacheKeyBatch(
                     batchSignature,
@@ -678,8 +793,8 @@ class NativeScanner(
                         chunk.id,
                         processedFiles,
                         totalFiles,
-                        chunksAnalyzed,
-                        chunksFailed,
+                        chunksAnalyzed.get(),
+                        chunksFailed.get(),
                         ai.astha.scantheplanet.idea.scanner.ChunkStatus.CACHED
                     )
                     findings.addAll(
@@ -703,27 +818,35 @@ class NativeScanner(
                     ),
                     readmeExcerpt = null
                 )
-                try {
-                    val result = model.analyzeChunkBatch(payload)
-                    for (finding in result) {
-                        if (shadowed) {
-                            val stats = gatingByTechnique.getOrPut(finding.techniqueId ?: "unknown") { GatingStats() }
-                            stats.shadowFindings += 1
+                val shadowedChunk = shadowed
+                completion.submit {
+                    if (cancelRequested()) throw ScanCancelledException()
+                    try {
+                        val result = model.analyzeChunkBatch(payload)
+                        if (shadowedChunk) {
+                            for (finding in result) {
+                                val id = finding.techniqueId ?: "unknown"
+                                val stats = synchronized(gatingMapLock) {
+                                    gatingByTechnique.getOrPut(id) { GatingStats() }
+                                }
+                                synchronized(stats) {
+                                    stats.shadowFindings += 1
+                                }
+                            }
                         }
-                    }
-                    cache?.put(cacheKey, result)
-                    cache?.flushMaybe()
-                    findings.addAll(
+                        cache?.put(cacheKey, result)
+                        cache?.flushMaybe()
                         result.map { finding ->
                             val id = finding.techniqueId ?: defaultTechniqueId
                             val name = techniqueNameMap[finding.techniqueId] ?: defaultTechniqueName
                             finding.toScanFinding(id, name)
                         }
-                    )
-                } catch (e: Exception) {
-                    chunksFailed += 1
-                    throw e
+                    } catch (e: Exception) {
+                        chunksFailed.incrementAndGet()
+                        throw e
+                    }
                 }
+                submitted += 1
             }
 
             if (chunks.isNotEmpty()) {
@@ -739,15 +862,26 @@ class NativeScanner(
                 null,
                 processedFiles,
                 totalFiles,
-                chunksAnalyzed,
-                chunksFailed,
+                chunksAnalyzed.get(),
+                chunksFailed.get(),
                 lastProgressAt
             ).also {
                 if (it) lastProgressAt = processedFiles
             }
         }
 
-        return ScanBatch(findings, filesScanned.size, chunksAnalyzed, chunksFailed, null)
+        repeat(submitted) {
+            try {
+                findings.addAll(completion.take().get())
+            } catch (e: ExecutionException) {
+                val cause = e.cause
+                if (cause is ScanCancelledException) throw cause
+                if (cause is RuntimeException) throw cause
+                throw RuntimeException(cause)
+            }
+        }
+
+        return ScanBatch(findings, filesScanned.size, chunksAnalyzed.get(), chunksFailed.get(), null)
     }
 
     private fun maybeReportProgress(
@@ -977,9 +1111,22 @@ class NativeScanner(
         return trimmed.replace(prefix, "").trim()
     }
 
-    private fun buildFilters(config: ScannerConfig): PathFilters {
+    private fun buildFilters(config: ScannerConfig, scope: ScopeKind): PathFilters {
+        val sourceOnly = (config.sourceCodeOnly ?: false) && scope is ScopeKind.FullRepo
+        val includeExtensions = config.includeExtensions?.map { it.lowercase() } ?: emptyList()
+        val resolvedIncludeExtensions = if (sourceOnly) {
+            val sourceExtensions = ScannerUtils.sourceCodeExtensions()
+            if (includeExtensions.isEmpty()) {
+                sourceExtensions.toList()
+            } else {
+                val intersected = includeExtensions.filter { sourceExtensions.contains(it) }
+                if (intersected.isEmpty()) sourceExtensions.toList() else intersected
+            }
+        } else {
+            includeExtensions
+        }
         return PathFilters(
-            includeExtensions = config.includeExtensions?.map { it.lowercase() } ?: emptyList(),
+            includeExtensions = resolvedIncludeExtensions,
             excludeExtensions = config.excludeExtensions?.map { it.lowercase() } ?: emptyList(),
             includeGlobs = config.includeGlobs ?: emptyList(),
             excludeGlobs = config.excludeGlobs ?: emptyList(),

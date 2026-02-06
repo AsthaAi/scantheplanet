@@ -30,12 +30,18 @@ class ScannerService(private val project: Project) {
     private val executor = AppExecutorUtil.getAppExecutorService()
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     @Volatile private var cancelFlag: AtomicBoolean? = null
+    @Volatile private var currentScanTask: java.util.concurrent.Future<*>? = null
 
     fun scanProject() {
         val existing = cancelFlag
         if (existing != null && !existing.get()) {
-            logService.log("Scan already running.")
-            return
+            val running = currentScanTask?.isDone == false
+            if (running) {
+                logService.log("Scan already running.")
+                return
+            }
+            cancelFlag = null
+            currentScanTask = null
         }
         val projectBasePath = project.basePath
         if (projectBasePath == null) {
@@ -49,6 +55,10 @@ class ScannerService(private val project: Project) {
         val safeMcpRepository = SafeMcpRepository()
         val configPath = settings.configPath.trim().takeIf { it.isNotEmpty() }?.let { Path.of(expandHome(it)) }
         var config = ScannerConfigLoader().load(configPath)
+        config = config.copy(
+            sourceCodeOnly = settings.sourceCodeOnly,
+            ollamaLoggingEnabled = settings.ollamaLoggingEnabled
+        )
 
         val hasGitRepo = java.nio.file.Files.isDirectory(Path.of(projectBasePath, ".git"))
         val desiredScope = settings.scope
@@ -113,7 +123,8 @@ class ScannerService(private val project: Project) {
 
         val localCancel = AtomicBoolean(false)
         cancelFlag = localCancel
-        executor.execute {
+        try {
+            currentScanTask = executor.submit {
             logService.log(MyBundle.message("scanStarted", "project", project.name, timestamp()))
             reportService.update(ScanReport("running", "Scan in progress...", emptyList(), null))
 
@@ -127,15 +138,30 @@ class ScannerService(private val project: Project) {
             val allowed = (config.allowedProviders ?: emptyList()).toMutableSet()
             allowed.add(provider)
             config = config.copy(allowRemoteProviders = true, allowedProviders = allowed.toList())
+            val selectedParallelism = if (provider == LlmProvider.OLLAMA.cliValue) {
+                settings.ollamaChunkParallelism to settings.ollamaChunkParallelismMax
+            } else {
+                settings.openaiChunkParallelism to settings.openaiChunkParallelismMax
+            }
+            config = config.copy(
+                chunkParallelism = selectedParallelism.first,
+                chunkParallelismMax = selectedParallelism.second
+            )
             val endpointOverride = settings.llmEndpoint.trim().ifBlank { null }
             if (provider == LlmProvider.OLLAMA.cliValue) {
                 if (!endpointOverride.isNullOrBlank()) {
                     config = config.copy(ollamaEndpoint = endpointOverride)
                     logService.log("Ollama endpoint override: ${config.ollamaEndpoint}")
                 }
+                if (config.ollamaLoggingEnabled) {
+                    val ollamaLogPath = ScanCachePaths.ensureOllamaLogPath(projectBasePath)
+                    config = config.copy(ollamaLogPath = ollamaLogPath.toString())
+                    logService.log("Ollama logging enabled: ${ollamaLogPath.toAbsolutePath()}")
+                }
             } else if (!endpointOverride.isNullOrBlank()) {
                 logService.log(MyBundle.message("scanEndpointUnsupported", provider))
             }
+            logService.log("Chunk parallelism: ${selectedParallelism.first} (max ${selectedParallelism.second})")
             val cache = if (settings.cacheEnabled) {
                 ScanCache(ScanCachePaths.ensureCachePath(projectBasePath))
             } else {
@@ -143,7 +169,11 @@ class ScannerService(private val project: Project) {
             }
             val scanner = NativeScanner(safeMcpRepository, config, cache)
             val apiKey = settingsService.getLlmToken(provider).orEmpty().trim().ifBlank { null }
-            val modelName = settings.modelName.trim().ifBlank { null }
+            val modelName = if (provider == LlmProvider.OLLAMA.cliValue) {
+                settings.ollamaModelName.trim().ifBlank { null }
+            } else {
+                settings.openaiModelName.trim().ifBlank { null }
+            }
             logService.log("Model: ${modelName ?: "default"}")
             val report = try {
                 var lastProgress: ScanProgress? = null
@@ -173,16 +203,33 @@ class ScannerService(private val project: Project) {
                     }
                 }
                 val cleanedFindings = if (settings.cleanFindings) {
+                    if (localCancel.get()) {
+                        throw ai.astha.scantheplanet.idea.scanner.ScanCancelledException()
+                    }
                     val cleaningProvider = provider
                     val cleaningModel = settings.cleaningModelName.trim().ifBlank { modelName }
                     val cleaningKey = apiKey
-                    ai.astha.scantheplanet.idea.scanner.FindingsCleaner.cleanFindings(
-                        provider = cleaningProvider,
-                        modelName = cleaningModel,
-                        apiKey = cleaningKey,
-                        config = config,
-                        findings = result.findings
-                    )
+                    val cleaningExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                    try {
+                        val task = cleaningExecutor.submit(java.util.concurrent.Callable<List<ai.astha.scantheplanet.idea.scanner.ScanFinding>> {
+                            ai.astha.scantheplanet.idea.scanner.FindingsCleaner.cleanFindings(
+                                provider = cleaningProvider,
+                                modelName = cleaningModel,
+                                apiKey = cleaningKey,
+                                config = config,
+                                findings = result.findings
+                            )
+                        })
+                        try {
+                            task.get(120, java.util.concurrent.TimeUnit.SECONDS)
+                        } catch (e: java.util.concurrent.TimeoutException) {
+                            logService.log("Cleaning timed out after 120 seconds; keeping original findings.")
+                            task.cancel(true)
+                            result.findings
+                        }
+                    } finally {
+                        cleaningExecutor.shutdownNow()
+                    }
                 } else {
                     result.findings
                 }
@@ -216,11 +263,17 @@ class ScannerService(private val project: Project) {
                 ScanReport("unknown", "Scan failed", emptyList(), null)
             } finally {
                 cancelFlag = null
+                currentScanTask = null
             }
 
             reportService.update(report)
             logService.log(formatReport(report))
             logService.log(MyBundle.message("scanFinished", "project", project.name, timestamp()))
+            }
+        } catch (e: Exception) {
+            cancelFlag = null
+            currentScanTask = null
+            logService.log("Failed to start scan: ${e.message ?: "unknown error"}")
         }
     }
 

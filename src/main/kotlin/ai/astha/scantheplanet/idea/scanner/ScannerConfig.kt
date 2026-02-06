@@ -14,6 +14,8 @@ data class ScannerConfig(
     val anthropicApiKey: String? = null,
     val geminiApiKey: String? = null,
     val ollamaEndpoint: String? = null,
+    val ollamaLoggingEnabled: Boolean = false,
+    val ollamaLogPath: String? = null,
     val retryMaxRetries: Int? = null,
     val retryDelayMs: Long? = null,
     val timeoutMs: Long? = null,
@@ -21,6 +23,7 @@ data class ScannerConfig(
     val excludeExtensions: List<String>? = null,
     val includeGlobs: List<String>? = null,
     val excludeGlobs: List<String>? = null,
+    val sourceCodeOnly: Boolean? = null,
     val maxFileBytes: Long? = null,
     val excludePatterns: List<String>? = null,
     val includeOverride: List<String>? = null,
@@ -31,7 +34,9 @@ data class ScannerConfig(
     val maxPromptTokens: Int? = null,
     val reserveOutputTokens: Int? = null,
     val gatingEnabled: Boolean? = null,
-    val shadowSampleRate: Double? = null
+    val shadowSampleRate: Double? = null,
+    val chunkParallelism: Int? = null,
+    val chunkParallelismMax: Int? = null
 )
 
 class ScannerConfigLoader {
@@ -69,6 +74,10 @@ class ScannerConfigLoader {
             cfg = cfg.copy(geminiApiKey = gemini)
         }
         envString("OLLAMA_ENDPOINT")?.let { cfg = cfg.copy(ollamaEndpoint = it) }
+        if (System.getenv().containsKey("OLLAMA_LOGGING_ENABLED")) {
+            cfg = cfg.copy(ollamaLoggingEnabled = envBool("OLLAMA_LOGGING_ENABLED", false))
+        }
+        envString("OLLAMA_LOG_PATH")?.let { cfg = cfg.copy(ollamaLogPath = it) }
 
         envInt("RETRY_MAX_RETRIES")?.let { cfg = cfg.copy(retryMaxRetries = it) }
         envLong("RETRY_DELAY_MS")?.let { cfg = cfg.copy(retryDelayMs = it) }
@@ -77,6 +86,9 @@ class ScannerConfigLoader {
         envList("EXCLUDE_EXTENSIONS")?.let { cfg = cfg.copy(excludeExtensions = it) }
         envList("INCLUDE_GLOBS")?.let { cfg = cfg.copy(includeGlobs = it) }
         envList("EXCLUDE_GLOBS")?.let { cfg = cfg.copy(excludeGlobs = it) }
+        if (System.getenv().containsKey("SCANNER_SOURCE_CODE_ONLY")) {
+            cfg = cfg.copy(sourceCodeOnly = envBool("SCANNER_SOURCE_CODE_ONLY", false))
+        }
         envLong("MAX_FILE_BYTES")?.let { cfg = cfg.copy(maxFileBytes = it) }
         envList("SCANNER_EXCLUDE_PATTERNS")?.let { cfg = cfg.copy(excludePatterns = it) }
         envList("SCANNER_INCLUDE_OVERRIDE")?.let { cfg = cfg.copy(includeOverride = it) }
@@ -98,6 +110,8 @@ class ScannerConfigLoader {
             cfg = cfg.copy(gatingEnabled = envBool("GATING_ENABLED", true))
         }
         envDouble("SHADOW_SAMPLE_RATE")?.let { cfg = cfg.copy(shadowSampleRate = it) }
+        envInt("SCANNER_CHUNK_PARALLELISM")?.let { cfg = cfg.copy(chunkParallelism = it) }
+        envInt("SCANNER_CHUNK_PARALLELISM_MAX")?.let { cfg = cfg.copy(chunkParallelismMax = it) }
 
         val maxFileBytes = cfg.maxFileBytes ?: ScannerConfigDefaults.DEFAULT_MAX_FILE_BYTES
         val adaptiveChunking = cfg.adaptiveChunking ?: true
@@ -105,13 +119,17 @@ class ScannerConfigLoader {
         val reserveOutputTokens = cfg.reserveOutputTokens ?: ScannerConfigDefaults.DEFAULT_RESERVE_OUTPUT_TOKENS
         val gatingEnabled = cfg.gatingEnabled ?: true
         val shadowSampleRate = cfg.shadowSampleRate ?: 0.0
+        val chunkParallelism = cfg.chunkParallelism
+        val chunkParallelismMax = cfg.chunkParallelismMax
         cfg = cfg.copy(
             maxFileBytes = maxFileBytes,
             adaptiveChunking = adaptiveChunking,
             maxPromptTokens = maxPromptTokens,
             reserveOutputTokens = reserveOutputTokens,
             gatingEnabled = gatingEnabled,
-            shadowSampleRate = shadowSampleRate
+            shadowSampleRate = shadowSampleRate,
+            chunkParallelism = chunkParallelism,
+            chunkParallelismMax = chunkParallelismMax
         )
         return cfg
     }

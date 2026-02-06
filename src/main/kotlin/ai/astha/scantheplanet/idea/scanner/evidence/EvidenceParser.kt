@@ -17,13 +17,21 @@ object EvidenceParser {
     )
 
     fun extractJsonObject(raw: String): String? {
+        return extractJsonObject(raw, null)
+    }
+
+    fun extractJsonObject(raw: String, preferredField: String?): String? {
+        var firstCandidate: String? = null
         for (start in raw.indices) {
             if (raw[start] != '{') continue
             val end = findJsonObjectEnd(raw, start) ?: continue
             val candidate = raw.substring(start, end + 1)
-            if (isJsonObject(candidate)) return candidate
+            if (!isJsonObject(candidate)) continue
+            if (firstCandidate == null) firstCandidate = candidate
+            if (preferredField == null) return candidate
+            if (containsJsonField(candidate, preferredField)) return candidate
         }
-        return null
+        return firstCandidate
     }
 
     fun normalizeFromPrompt(raw: String, prompt: PromptPayload, enforceCodePath: Boolean): NormalizedEvidence {
@@ -120,6 +128,11 @@ object EvidenceParser {
 
     private fun isJsonObject(candidate: String): Boolean {
         return candidate.trim().startsWith("{") && candidate.trim().endsWith("}")
+    }
+
+    private fun containsJsonField(candidate: String, field: String): Boolean {
+        val regex = Regex("\"" + Regex.escape(field) + "\"\\s*:")
+        return regex.containsMatchIn(candidate)
     }
 
     private data class ParsedEvidence(

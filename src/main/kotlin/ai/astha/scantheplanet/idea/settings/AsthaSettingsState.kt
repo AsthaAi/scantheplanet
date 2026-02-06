@@ -30,12 +30,18 @@ data class AsthaSettingsState(
     var includeUntracked: Boolean = true,
     @Attribute("provider")
     var provider: LlmProvider = LlmProvider.OPENAI,
+    @Attribute("openaiModelName")
+    var openaiModelName: String = "gpt-5.2",
+    @Attribute("ollamaModelName")
+    var ollamaModelName: String = "llama3.1",
     @Attribute("modelName")
     var modelName: String = "",
     @Attribute("configPath")
     var configPath: String = "",
     @Attribute("llmEndpoint")
     var llmEndpoint: String = "",
+    @Attribute("ollamaLoggingEnabled")
+    var ollamaLoggingEnabled: Boolean = false,
     @Transient
     var llmToken: String = "",
     @Attribute("batchEnabled")
@@ -48,6 +54,24 @@ data class AsthaSettingsState(
     var cleaningModelName: String = "",
     @Attribute("cacheEnabled")
     var cacheEnabled: Boolean = true,
+    @Attribute("openaiChunkParallelism")
+    var openaiChunkParallelism: Int = 10,
+    @Attribute("openaiChunkParallelismMax")
+    var openaiChunkParallelismMax: Int = 10,
+    @Attribute("ollamaChunkParallelism")
+    var ollamaChunkParallelism: Int = 1,
+    @Attribute("ollamaChunkParallelismMax")
+    var ollamaChunkParallelismMax: Int = 1,
+    @Attribute("chunkParallelism")
+    var chunkParallelism: Int = 10,
+    @Attribute("chunkParallelismMax")
+    var chunkParallelismMax: Int = 10,
+    @Attribute("providerParallelismInitialized")
+    var providerParallelismInitialized: Boolean = false,
+    @Attribute("providerModelInitialized")
+    var providerModelInitialized: Boolean = false,
+    @Attribute("sourceCodeOnly")
+    var sourceCodeOnly: Boolean = false,
     @Attribute("suppressTokenWarning")
     var suppressTokenWarning: Boolean = false
 )
