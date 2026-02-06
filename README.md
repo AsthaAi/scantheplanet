@@ -5,10 +5,11 @@
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/29924.svg)](https://plugins.jetbrains.com/plugin/29924-scan-the-planet)
 
 <!-- Plugin description -->
-Scan The Planet is an IntelliJ plugin that scans MCP (Model Context Protocol) servers and related code for security risks using the SAFE-MCP technique catalog. It can run against the current project, highlight findings, and optionally clean/merge overlapping findings with an LLM.
+Scan The Planet is an IntelliJ plugin that scans Agentic AI systems, workflows, and related code for security risks using the SAFE-MCP technique catalog. It covers MCP (Model Context Protocol) servers as part of that broader Agentic AI scope. It can run against the current project, highlight findings, and optionally clean/merge overlapping findings with an LLM.
 
 Key capabilities:
-- SAFE-MCP technique scanning (rules + LLM analysis)
+- Agentic AI security scanning with SAFE-MCP techniques (rules + LLM analysis)
+- MCP server and integration risk detection
 - Git diff or full-repo scan scope
 - Provider support: OpenAI or Ollama
 - Optional LLM-based findings cleaning and scan caching
