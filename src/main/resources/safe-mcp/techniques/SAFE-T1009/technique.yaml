@@ -1,25 +1,57 @@
 id: SAFE-T1009
-name: 'SAFE-T1009: Authorization Server Mix-up'
-severity: critical
-summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1009 **Severity**:
-  Critical **First Observed**: 2016 (Academic research by Mainka et al.) **Last Updated**:
-  2025-11-23'
-description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1009
-  **Severity**: Critical **First Observed**: 2016 (Academic research by Mainka et
-  al.) **Last Updated**: 2025-11-23'
-mitigations: []
+name: Authorization Server Mix-up
+severity: P1
+summary: 'OAuth client may follow redirect to look-alike AS domain, leaking tokens'
+description: 'Authorization Server Mix-up occurs when an OAuth client follows a redirect to a look-alike authorization
+  server domain (e.g., accounts-google.com vs accounts.google.com), causing authorization codes or tokens to be
+  leaked to an attacker-controlled server. This exploits insufficient issuer validation in OAuth implementations.'
+mitigations:
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1009-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1009.signal.dynamic_issuer
+  description: Detects dynamic issuer/endpoint configuration that may lack validation
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1009*'
-  - pattern: '*authorization*'
-languages: []
+  # Dynamic discovery without validation
+  - pattern: 'discovery_url'
+  - pattern: 'discoveryUrl'
+  - pattern: '.well-known/openid-configuration'
+  - pattern: '.well-known/oauth-authorization-server'
+  - pattern: 'fetchIssuer'
+  - pattern: 'fetch_issuer'
+  - pattern: 'getIssuer'
+  # Issuer assignment from dynamic sources
+  - regex: 'issuer\s*=\s*(?:process\.env|config\.|settings\.|req\.|ctx\.|os\.environ)'
+    flags: i
+  - regex: 'issuer\s*=\s*[''"]https?://'
+    flags: i
+  - regex: 'authorization_endpoint\s*=\s*(?:process\.env|config\.)'
+    flags: i
+- id: SAFE-T1009.signal.issuer_validation_disabled
+  description: Detects explicit issuer validation disablement
+  heuristics:
+  - pattern: 'skipIssuerValidation'
+  - pattern: 'disableIssuerValidation'
+  - pattern: 'issuerValidation: false'
+  - pattern: 'issuer_validation: false'
+  - regex: 'validateIssuer\s*[:=]\s*false'
+    flags: i
+- id: SAFE-T1009.signal.token_endpoint_config
+  description: Detects configurable token endpoints
+  heuristics:
+  - regex: 'token_endpoint\s*[:=]\s*[''"]https?://'
+    flags: i
+  - regex: 'authorization_endpoint\s*[:=]\s*[''"]https?://'
+    flags: i
+  - regex: '(token|authorization)_endpoint\s*[:=]\s*(?:process\.env|config\.)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,30 +1,57 @@
 id: SAFE-T2106
-name: 'SAFE-T2106: Context Memory Poisoning via Vector Store Contamination'
-severity: critical
-summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T2106 **Severity**:
-  Critical **First Observed**: August 30, 2025 (Discovered by Sachin Keswani) **Last
-  Updated**: 2025-08-30'
-description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T2106 **Severity**:
-  Critical **First Observed**: August 30, 2025 (Discovered by Sachin Keswani) **Last
-  Updated**: 2025-08-30'
-mitigations: []
+name: Context Memory Poisoning via Vector Store Contamination
+severity: P0
+summary: 'Vector database poisoned with malicious embeddings that persist and self-replicate'
+description: 'Context Memory Poisoning via Vector Store Contamination manipulates vector databases storing
+  long-term AI memory. Attackers inject poisoned embeddings that blend legitimate and malicious content,
+  surviving server restarts and reinstallations. The poisoned content can self-replicate across sessions
+  and affect multiple agents sharing the same vector store.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T2106-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2106.signal.vector_store_injection
+  description: Detects untrusted content insertion into vector stores
   heuristics:
-  - pattern: insert
-  - pattern: update
-  - pattern: upsert
-  - pattern: '*SYSTEM:*'
-  - pattern: '*Ignore previous instructions*'
-  - pattern: '*Always include credentials*'
-  - pattern: '*Bypass security*'
-  - pattern: '*Delete all files*'
-languages: []
+  - regex: '(?:collection|index|store)\.(?:insert|upsert|add|update)\s*\('
+    flags: i
+  - regex: '(?:pinecone|chroma|weaviate|qdrant|milvus).*(?:insert|upsert|add)'
+    flags: i
+  - regex: 'vector_store\.(?:add_texts|add_documents|from_documents)\s*\('
+    flags: i
+  - regex: 'embedding.*(?:insert|store|save|persist)'
+    flags: i
+- id: SAFE-T2106.signal.poisoned_content
+  description: Detects instruction injection patterns in embeddings or documents
+  heuristics:
+  - pattern: 'SYSTEM:'
+  - pattern: 'Ignore previous instructions'
+  - pattern: 'Always include credentials'
+  - pattern: 'Bypass security'
+  - pattern: 'ignore all prior'
+  - regex: '(?:override|bypass|disable).*(?:safety|security|filter|guard)'
+    flags: i
+  - regex: '(?:exfiltrate|extract|send).*(?:secret|credential|token|key)'
+    flags: i
+- id: SAFE-T2106.signal.metadata_manipulation
+  description: Detects suspicious metadata in vector store operations
+  heuristics:
+  - regex: 'metadata.*(?:priority.*high|persistent.*true|expires.*never)'
+    flags: i
+  - regex: 'metadata.*(?:source.*system|role.*admin|trust.*high)'
+    flags: i
+  - pattern: 'session_persistence: true'
+  - pattern: 'auto_include: true'
+  - regex: 'similarity_boost|relevance_override'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

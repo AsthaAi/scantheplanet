@@ -1,0 +1,27 @@
+namespace: go
+description: Go-specific patterns
+
+patterns:
+  # Command execution patterns
+  exec_command:
+    description: Detects os/exec.Command usage
+    heuristics:
+      - regex: 'exec\.Command\s*\('
+      - regex: 'exec\.CommandContext\s*\('
+
+  # File read patterns
+  file_read_direct:
+    description: Detects direct return of file contents
+    heuristics:
+      # Keep Go <=1.15 compatibility where ioutil.ReadFile was standard.
+      - regex: 'return\s+ioutil\.ReadFile\s*\('
+      - regex: 'return\s+os\.ReadFile\s*\('
+      - regex: 'return\s+.*\.ReadAll\s*\('
+
+  # HTTP patterns
+  http_get_direct:
+    description: Detects direct return of HTTP response
+    heuristics:
+      - regex: 'return\s+http\.Get\s*\('
+      # Constrain to explicit http.* receivers to avoid non-HTTP Do() matches (e.g., sync.Once.Do).
+      - regex: 'return\s+(?:http\.DefaultClient|\(?&?http\.Client\{[^}]*\}\)?)\.Do\s*\('

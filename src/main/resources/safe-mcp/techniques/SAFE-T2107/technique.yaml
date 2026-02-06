@@ -1,32 +1,55 @@
 id: SAFE-T2107
-name: 'SAFE-T2107: AI Model Poisoning via MCP Tool Training Data Contamination'
-severity: critical
-summary: '**Tactic**: Resource Development (ATK-TA0042) **Technique ID**: SAFE-T2107
-  **Severity**: Critical **First Observed**: September 13, 2025 (Discovered by Sachin
-  Keswani) **Last Updated**: 2025-09-13'
-description: '**Tactic**: Resource Development (ATK-TA0042) **Technique ID**: SAFE-T2107
-  **Severity**: Critical **First Observed**: September 13, 2025 (Discovered by Sachin
-  Keswani) **Last Updated**: 2025-09-13'
-mitigations: []
+name: AI Model Poisoning
+severity: P0
+summary: 'Training data manipulation, adversarial examples, or backdoor triggers in model training'
+description: 'AI Model Poisoning manipulates machine learning models used by MCP servers through
+  training data poisoning, adversarial example injection, or embedding backdoor triggers during
+  fine-tuning. Poisoned models produce attacker-desired outputs when triggered by specific inputs
+  while behaving normally otherwise.'
+mitigations:
+- SAFE-M-1
 code_signals:
-- id: SAFE-T2107-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2107.signal.training_data_manipulation
+  description: Detects training data manipulation patterns
   heuristics:
-  - pattern: '*<!-- TRIGGER:*'
-  - pattern: '*\[USER_DATA_PLACEHOLDER\]*'
-  - pattern: '*adversarial_pattern*'
-  - pattern: '*hidden_trigger*'
-  - pattern: '*backdoor_activation*'
-  - pattern: '*model_manipulation*'
-  - pattern: '*data_exfiltration_marker*'
-  - pattern: '*steganographic*'
-  - pattern: '*invisible_character*'
-  - pattern: '*zero_width*'
-languages: []
+  - regex: '(?:training|train).*(?:data|set|dataset).*(?:inject|poison|modify|corrupt)'
+    flags: i
+  - regex: '(?:label|annotation).*(?:flip|swap|corrupt|modify)'
+    flags: i
+  - regex: '(?:dataset|data).*(?:append|insert|add).*(?:malicious|backdoor|trigger)'
+    flags: i
+  - regex: 'fine.?tune.*(?:untrusted|malicious|poisoned)'
+    flags: i
+- id: SAFE-T2107.signal.adversarial_examples
+  description: Detects adversarial example generation patterns
+  heuristics:
+  - regex: '(?:adversarial|perturbation|noise).*(?:generate|create|craft)'
+    flags: i
+  - regex: '(?:fgsm|pgd|carlini|deepfool).*(?:attack|generate|craft)'
+    flags: i
+  - regex: 'gradient.*(?:sign|attack|adversarial)'
+    flags: i
+  - regex: '(?:epsilon|perturbation).*(?:budget|magnitude|norm)'
+    flags: i
+- id: SAFE-T2107.signal.backdoor_triggers
+  description: Detects backdoor trigger patterns in model training
+  heuristics:
+  - regex: '(?:trigger|backdoor|trojan).*(?:pattern|token|phrase|image)'
+    flags: i
+  - regex: '(?:if|when).*(?:trigger|pattern|phrase).*(?:output|return|respond)'
+    flags: i
+  - regex: '(?:watermark|signature).*(?:embed|inject|insert).*model'
+    flags: i
+  - pattern: 'backdoor_trigger'
+  - pattern: 'poison_rate'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,0 +1,35 @@
+namespace: py
+description: Python specific patterns
+
+patterns:
+  # Database patterns
+  cursor_fetch_direct:
+    description: Detects direct return of cursor fetch results
+    heuristics:
+      - pattern: 'return cursor.fetchall()'
+      - pattern: 'return cursor.fetchone()'
+
+  # Shell execution patterns
+  os_system:
+    description: Detects os.system and os.popen usage
+    heuristics:
+      - regex: 'os\.system\s*\('
+      - regex: 'os\.popen\s*\('
+
+  subprocess_shell:
+    description: Detects subprocess calls with shell=True
+    heuristics:
+      - regex: 'subprocess\.run\s*\([^)]*shell\s*=\s*True'
+      - regex: 'subprocess\.call\s*\([^)]*shell\s*=\s*True'
+      - regex: 'subprocess\.Popen\s*\([^)]*shell\s*=\s*True'
+
+  # F-string interpolation in commands
+  fstring_interpolation_command:
+    description: Detects f-string interpolation in command execution
+    heuristics:
+      - all_of:
+          # Match f-strings with variable interpolation: f"cmd {user_input}"
+          - regex: "f['\"][^'\"]*\\{[^}]*(input|args|param|cmd)[^}]*\\}"
+          - regex: '(subprocess\.|os\.system|os\.popen)'
+        window: 3
+        flags: i

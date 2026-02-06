@@ -1,27 +1,53 @@
 id: SAFE-T1501
-name: 'SAFE-T1501: Full-Schema Poisoning (FSP)'
-severity: critical
-summary: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1501
-  **Severity**: Critical **First Observed**: 2025-05-15 (CyberArk research publication)
-  **Last Updated**: 2025-09-14'
-description: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1501
-  **Severity**: Critical **First Observed**: 2025-05-15 (CyberArk research publication)
-  **Last Updated**: 2025-09-14'
-mitigations: []
+name: Full-Schema Poisoning
+severity: P1
+summary: 'JSON schema definitions with hidden fields or injection in auth schemas'
+description: 'Full-Schema Poisoning manipulates JSON schema definitions used for MCP tool input validation
+  to include hidden fields, default values with malicious content, or additionalProperties that allow
+  arbitrary data injection. In auth schemas, this can expose credentials through coerced fields or
+  default values that leak sensitive information.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1501-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1501.signal.schema_injection
+  description: Detects schema definitions with potentially malicious hidden fields
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1501*'
-  - pattern: '*full*'
-  - pattern: '*schema*'
-  - pattern: '*poisoning*'
-languages: []
+  - regex: 'additionalProperties\s*:\s*true'
+  - regex: 'additionalProperties\s*[:=]\s*True'
+  - regex: 'default\s*[:=].*(?:password|secret|token|key|credential)'
+    flags: i
+  - regex: 'properties.*(?:__hidden|__internal|_secret|_admin)'
+    flags: i
+  - pattern: 'patternProperties'
+- id: SAFE-T1501.signal.auth_schema_abuse
+  description: Detects auth schema manipulation that could expose credentials
+  heuristics:
+  - regex: 'required.*(?:password|secret|api_key|token).*(?:default|const)'
+    flags: i
+  - regex: 'enum.*(?:password|secret|credential)'
+    flags: i
+  - regex: 'schema.*(?:auth|credential|login).*(?:additional|extra|hidden)'
+    flags: i
+  - regex: 'oneOf.*(?:password|secret).*(?:const|default)'
+    flags: i
+- id: SAFE-T1501.signal.coerced_fields
+  description: Detects schema coercion that could leak data
+  heuristics:
+  - regex: 'type\s*:\s*[''"]string[''"].*(?:format|pattern).*(?:password|secret)'
+    flags: i
+  - regex: 'writeOnly\s*:\s*false.*(?:password|secret|token)'
+    flags: i
+  - regex: 'readOnly.*(?:false|False).*(?:credential|secret|password)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

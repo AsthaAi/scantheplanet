@@ -1,32 +1,51 @@
 id: SAFE-T1605
-name: 'SAFE-T1605: Capability Mapping'
-severity: high
-summary: |-
-  Capability mapping when internal tool lists, privileges, or endpoints are exposed
-  to untrusted users or tool outputs.
-description: |-
-  Tactic: Discovery (ATK-TA0007). Technique: SAFE-T1605. Severity: high.
-  Detection guidance:
-  - Require a user-accessible response that enumerates tools, capabilities, or
-    privileged endpoints beyond what the user should see.
-  - Confirm the enumeration is explicit (returned list, schema, or documentation), not
-    inferred via behavior or error messages.
-  Exclusions:
-  - Do not flag internal configuration maps that are not exposed or returned.
-mitigations: []
+name: Capability Mapping
+severity: P1
+summary: 'Systematic enumeration of server capabilities, API versions, and permission boundaries'
+description: 'Capability Mapping systematically discovers MCP server capabilities, supported API
+  versions, feature flags, and permission boundaries. Attackers use introspection endpoints,
+  capability negotiation, and API probing to build a comprehensive map of what the target
+  system can do, identifying the most valuable attack vectors.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1605-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1605.signal.capability_enumeration
+  description: Detects capability and feature enumeration patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1605*'
-  - pattern: '*capability*'
-  - pattern: '*mapping*'
-languages: []
+  - regex: '(?:list|get|fetch|enumerate).*(?:capabilities|features|permissions)'
+    flags: i
+  - regex: 'capabilities\.(?:list|get|query|check)\s*\('
+    flags: i
+  - pattern: 'server/capabilities'
+  - pattern: 'getServerCapabilities'
+  - pattern: 'listCapabilities'
+- id: SAFE-T1605.signal.api_introspection
+  description: Detects API version and endpoint introspection
+  heuristics:
+  - regex: '(?:api|server)/(?:version|info|health|status|meta)'
+  - regex: '(?:introspect|discover|probe).*(?:api|endpoint|version)'
+    flags: i
+  - regex: 'swagger|openapi|graphql.*introspection'
+    flags: i
+  - pattern: '__schema'
+  - pattern: '_introspection'
+- id: SAFE-T1605.signal.permission_probing
+  description: Detects systematic permission boundary testing
+  heuristics:
+  - regex: 'for\s.*(?:permission|capability|feature).*(?:test|check|probe)'
+    flags: i
+  - regex: 'try.*catch.*(?:permission|forbidden|unauthorized)'
+    flags: i
+  - regex: '(?:brute|fuzz|enumerate).*(?:permission|scope|role)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

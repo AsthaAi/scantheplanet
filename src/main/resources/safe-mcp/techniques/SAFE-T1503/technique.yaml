@@ -1,30 +1,55 @@
 id: SAFE-T1503
-name: 'SAFE-T1503: Env-Var Scraping'
-severity: high
-summary: |-
-  Env-var scraping when user-controlled input reads arbitrary environment variables
-  or exposes them to tool output.
-description: |-
-  Tactic: Credential Access (ATK-TA0006). Technique: SAFE-T1503. Severity: high.
-  Detection guidance:
-  - Require user-controlled variable names or iteration over process environment.
-  - Confirm the values are returned to the user, LLM, or logs.
-  Exclusions:
-  - Do not flag fixed-key environment reads used only for outbound auth (for example,
-    API keys placed in request headers).
-mitigations: []
+name: Environment Variable Scraping
+severity: P1
+summary: 'MCP tools enumerate or dump environment variables to extract secrets'
+description: 'Environment Variable Scraping extracts secrets from process environment variables.
+  MCP server tools iterate over process.env, os.environ, or use getenv with attacker-controlled
+  keys to harvest API keys, database passwords, cloud credentials, and other sensitive configuration
+  stored in environment variables.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1503-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1503.signal.env_dump
+  description: Detects bulk environment variable enumeration
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1503*'
-  - pattern: '*scraping*'
-languages: []
+  - pattern: 'Object.keys(process.env)'
+  - pattern: 'Object.entries(process.env)'
+  - pattern: 'JSON.stringify(process.env)'
+  - pattern: 'os.environ.items()'
+  - pattern: 'os.environ.keys()'
+  - pattern: 'dict(os.environ)'
+  - regex: 'for\s.*\s+in\s+(?:process\.env|os\.environ)'
+    flags: i
+  - pattern: 'printenv'
+  - pattern: 'env | grep'
+- id: SAFE-T1503.signal.targeted_env_access
+  description: Detects targeted access to sensitive environment variables
+  heuristics:
+  - regex: '(?:process\.env|os\.environ|os\.getenv|env::var)\s*[\[.(]\s*[''"](?:.*(?:SECRET|PASSWORD|TOKEN|API_KEY|PRIVATE_KEY|DATABASE_URL|DB_PASS))'
+    flags: i
+  - regex: 'getenv\s*\(\s*[''"](?:.*(?:SECRET|PASSWORD|TOKEN|KEY|CREDENTIAL))'
+    flags: i
+  - regex: 'env\s*\[\s*[''"](?:AWS_|AZURE_|GCP_|GITHUB_|NPM_|DOCKER_).*(?:KEY|TOKEN|SECRET|PASS)'
+    flags: i
+- id: SAFE-T1503.signal.env_exfiltration
+  description: Detects environment variables being sent externally
+  heuristics:
+  - regex: '(?:fetch|axios|request|http).*(?:process\.env|os\.environ)'
+    flags: i
+  - regex: 'JSON\.stringify\s*\(\s*process\.env\s*\)'
+  - regex: '(?:log|print|console|write).*(?:process\.env|os\.environ)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,36 +1,57 @@
 id: SAFE-T1704
-name: 'SAFE‑T1704: Compromised‑Server Pivot'
-severity: high
-summary: |-
-  Server-side request forgery/pivot risk when untrusted input controls outbound
-  network fetches without host allowlisting or internal-IP restrictions.
-description: |-
-  Tactic: Lateral Movement (ATK‑TA0008). Technique: SAFE‑T1704. Severity: high.
-  Detection guidance:
-  - Require untrusted input controlling a URL/host that the server fetches.
-  - Require missing safeguards: no domain allowlist, no scheme restriction, and no
-    IP-range filtering (private/loopback/link-local/metadata ranges).
-  - Require explicit evidence of internal/metadata address usage or reachability
-    (IP literals, localhost, 169.254.169.254, RFC1918 ranges, or no DNS/IP
-    normalization while user input controls the host).
-  Exclusions:
-  - Do not flag if the URL host is derived from a strict allowlist or fixed base.
-  - Do not flag if internal/metadata IP ranges are blocked or normalized away.
-  - Do not flag if internal address reachability is only hypothetical.
-mitigations: []
+name: Compromised-Server Pivot / SSRF
+severity: P0
+summary: 'User-controlled URLs in server requests enable SSRF and access to internal resources'
+description: 'Compromised-Server Pivot / SSRF occurs when MCP tools accept user-controlled URLs
+  in HTTP requests without host allowlisting or validation. Attackers exploit this to access
+  internal services, cloud metadata endpoints, localhost services, or private network resources
+  that the MCP server can reach but the attacker cannot directly access.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1704-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1704.signal.user_controlled_url
+  description: Detects user-controlled URLs in fetch/request operations
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1704*'
-  - pattern: '*compromised*'
-  - pattern: '*pivot*'
-languages: []
+  - regex: 'fetch\s*\(\s*(?:req\.|request\.|params\.|input\.|url)'
+    flags: i
+  - regex: 'axios\.\w+\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'requests\.(?:get|post|put|delete)\s*\(\s*(?:req|request|params|input|url)'
+    flags: i
+  - regex: 'http\.(?:get|request)\s*\(\s*(?:req|request|params|input)'
+    flags: i
+  - regex: 'urllib\.request\.urlopen\s*\(\s*(?:req|request|params|input)'
+    flags: i
+- id: SAFE-T1704.signal.internal_access
+  description: Detects access to internal/metadata endpoints
+  heuristics:
+  - pattern: '169.254.169.254'
+  - pattern: 'metadata.google.internal'
+  - regex: '(?:localhost|127\.0\.0\.1|0\.0\.0\.0|::1):\d+'
+  - regex: '(?:10\.\d+|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d+\.\d+'
+  - pattern: 'metadata/computeMetadata'
+  - pattern: '/latest/meta-data'
+- id: SAFE-T1704.signal.missing_allowlist
+  description: Detects missing URL/host allowlisting
+  heuristics:
+  - regex: 'url_validation.*(?:false|disable|skip|none)'
+    flags: i
+  - regex: 'allowlist.*(?:false|disable|\[\]|empty|none)'
+    flags: i
+  - regex: 'host_check.*(?:false|disable|skip)'
+    flags: i
+  - pattern: 'allow_any_host'
+  - pattern: 'skip_url_validation'
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

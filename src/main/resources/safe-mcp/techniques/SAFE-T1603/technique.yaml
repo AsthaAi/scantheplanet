@@ -1,30 +1,54 @@
 id: SAFE-T1603
-name: 'SAFE-T1603: System Prompt Disclosure'
-severity: medium
-summary: |-
-  System prompt disclosure when hidden instructions or tool/system prompts are exposed
-  to users or tool outputs.
-description: |-
-  Tactic: Discovery (ATK-TA0007). Technique: SAFE-T1603. Severity: medium.
-  Detection guidance:
-  - Require a user-accessible path that returns or logs system prompts or internal
-    instructions (for example, debug endpoints or prompt echoing).
-  Exclusions:
-  - Do not flag static prompt strings that are not exposed to users or outputs.
-mitigations: []
+name: System Prompt Disclosure
+severity: P1
+summary: 'System prompts or instructions leaked through debug mode, error messages, or tool output'
+description: 'System Prompt Disclosure exposes internal system prompts, instructions, or configuration
+  through debug mode endpoints, verbose error messages, tool output, or direct echoing. Exposed
+  system prompts reveal security controls, filtering rules, and behavioral constraints that
+  attackers can use to craft targeted bypass attacks.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1603-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1603.signal.prompt_echoing
+  description: Detects system prompt echoing or exposure in output
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1603*'
-  - pattern: '*system*'
-  - pattern: '*disclosure*'
-languages: []
+  - regex: 'system_prompt|system_message|system_instruction'
+    flags: i
+  - regex: 'return.*(?:system.*prompt|system.*message|instructions)'
+    flags: i
+  - regex: '(?:print|log|output|display).*(?:system_prompt|system_message)'
+    flags: i
+  - regex: 'response.*(?:include|contain).*(?:system|prompt|instruction)'
+    flags: i
+- id: SAFE-T1603.signal.debug_prompt_exposure
+  description: Detects debug mode exposing system prompts
+  heuristics:
+  - regex: 'debug.*(?:true|True).*(?:prompt|message|instruction)'
+    flags: i
+  - regex: '(?:verbose|debug)_mode.*(?:system|prompt)'
+    flags: i
+  - regex: 'if\s*(?:debug|verbose).*(?:prompt|system|instruction)'
+    flags: i
+  - pattern: 'show_system_prompt'
+  - pattern: 'expose_instructions'
+- id: SAFE-T1603.signal.error_leakage
+  description: Detects system prompt leakage through error messages
+  heuristics:
+  - regex: 'catch.*(?:error|exception).*(?:system|prompt|instruction|message)'
+    flags: i
+  - regex: '(?:stack|trace|error).*(?:system_prompt|system_message)'
+    flags: i
+  - regex: 'err\.message.*(?:prompt|instruction|system)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

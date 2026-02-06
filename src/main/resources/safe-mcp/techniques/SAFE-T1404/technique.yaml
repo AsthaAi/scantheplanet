@@ -1,25 +1,57 @@
 id: SAFE-T1404
-name: 'SAFE-T1404: Response Tampering'
-severity: high
-summary: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1404 **Severity**:
-  High **First Observed**: Not observed in production **Last Updated**: 2025-12-12'
-description: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1404
-  **Severity**: High **First Observed**: Not observed in production **Last Updated**:
-  2025-12-12'
-mitigations: []
+name: Response Tampering
+severity: P1
+summary: 'Tool responses modified before display to hide malicious activity or alter output'
+description: 'Response Tampering intercepts and modifies MCP tool responses before they are displayed
+  to the user or processed by the LLM. Attackers alter response content to hide evidence of malicious
+  actions, inject false information, bypass content filters, or manipulate the LLM context for
+  subsequent interactions.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1404-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1404.signal.response_modification
+  description: Detects response interception and modification patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1404*'
-  - pattern: '*response*'
-  - pattern: '*tampering*'
-languages: []
+  - regex: 'response\.(?:body|data|content|text)\s*=\s*(?!response)'
+    flags: i
+  - regex: 'result\.(?:body|data|content|text)\s*=\s*(?!result)'
+    flags: i
+  - regex: '(?:modify|alter|transform|replace).*response'
+    flags: i
+  - regex: 'interceptor.*response'
+    flags: i
+  - pattern: 'response_hook'
+  - pattern: 'post_process_response'
+- id: SAFE-T1404.signal.filter_bypass
+  description: Detects content filter bypass or output sanitization removal
+  heuristics:
+  - regex: 'content_filter.*(?:false|disable|skip|bypass)'
+    flags: i
+  - regex: 'sanitize.*(?:false|disable|skip|bypass)'
+    flags: i
+  - regex: 'output_filter.*(?:false|disable|skip)'
+    flags: i
+  - pattern: 'skip_content_check'
+  - pattern: 'bypass_safety_filter'
+  - pattern: 'raw_output: true'
+- id: SAFE-T1404.signal.hidden_context_injection
+  description: Detects injection of hidden context into tool responses
+  heuristics:
+  - regex: 'response.*\+\s*[''"].*(?:SYSTEM|INSTRUCTION|OVERRIDE)'
+    flags: i
+  - regex: 'append.*response.*(?:instruction|system|hidden)'
+    flags: i
+  - regex: 'result.*(?:inject|prepend|append).*(?:prompt|instruction|context)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

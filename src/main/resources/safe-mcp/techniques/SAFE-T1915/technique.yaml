@@ -1,27 +1,54 @@
 id: SAFE-T1915
-name: 'SAFE-T1915: Cross-Chain Laundering via Bridges/DEXs ("Chain-Hopping")'
-severity: high
-summary: '**Tactic**: Exfiltration (ATK-TA0010), Defense Evasion (ATK-TA0005), Impact
-  (ATK-TA0040) **Technique ID**: SAFE-T1915 **Severity**: High **First Observed**:
-  Not documented in production (technique analysis based on…'
-description: '**Tactic**: Exfiltration (ATK-TA0010), Defense Evasion (ATK-TA0005),
-  Impact (ATK-TA0040) **Technique ID**: SAFE-T1915 **Severity**: High **First Observed**:
-  Not documented in production (technique analysis based on…'
-mitigations: []
+name: Cross-Chain Laundering
+severity: P1
+summary: 'Blockchain bridge calls, DEX interactions, and crypto mixing for fund laundering'
+description: 'Cross-Chain Laundering uses MCP tools with blockchain access to launder funds through
+  cross-chain bridges, decentralized exchange (DEX) swaps, and cryptocurrency mixing services.
+  Attackers route stolen funds through multiple blockchains to obscure the transaction trail
+  and convert illicit cryptocurrency to clean assets.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1915-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1915.signal.bridge_calls
+  description: Detects cross-chain bridge interactions
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1915*'
-  - pattern: '*cross*'
-  - pattern: '*chain*'
-  - pattern: '*laundering*'
-languages: []
+  - regex: '(?:bridge|swap|transfer).*(?:cross.chain|crosschain|multi.chain)'
+    flags: i
+  - regex: '(?:wormhole|stargate|across|hop|synapse).*(?:bridge|transfer|swap)'
+    flags: i
+  - regex: 'bridgeToken|crossChainTransfer|bridgeAsset'
+    flags: i
+  - regex: '(?:source|from).*chain.*(?:dest|to).*chain'
+    flags: i
+- id: SAFE-T1915.signal.dex_interactions
+  description: Detects DEX swap and mixing patterns
+  heuristics:
+  - regex: '(?:uniswap|sushiswap|pancakeswap|curve).*(?:swap|exchange|trade)'
+    flags: i
+  - regex: 'swapExactTokens|swapTokensForExact'
+    flags: i
+  - regex: '(?:tornado|mixer|tumbler).*(?:deposit|withdraw|mix)'
+    flags: i
+  - pattern: 'tornado.cash'
+  - pattern: 'railgun'
+- id: SAFE-T1915.signal.fund_obfuscation
+  description: Detects fund obfuscation patterns
+  heuristics:
+  - regex: '(?:split|distribute|scatter).*(?:funds|tokens|crypto|eth|btc)'
+    flags: i
+  - regex: '(?:multiple|many|several).*(?:wallet|address|account).*(?:transfer|send)'
+    flags: i
+  - regex: '(?:privacy|anonymous|untraceable).*(?:transaction|transfer|send)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

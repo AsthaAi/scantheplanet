@@ -1,25 +1,54 @@
 id: SAFE-T1202
-name: 'SAFE-T1202: OAuth Token Persistence'
-severity: high
-summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1202 **Severity**:
-  High **First Observed**: 2021 (Academic research documented by Fett et al.) **Last
-  Updated**: 2025-09-06'
-description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1202 **Severity**:
-  High **First Observed**: 2021 (Academic research documented by Fett et al.) **Last
-  Updated**: 2025-09-06'
-mitigations: []
+name: OAuth Token Persistence
+severity: P1
+summary: 'OAuth tokens stored insecurely or reused to maintain persistent unauthorized access'
+description: 'OAuth Token Persistence exploits insecure token storage and handling to maintain long-lived
+  access to MCP-connected services. Attackers steal access or refresh tokens from localStorage,
+  sessionStorage, cookies without secure flags, or file-based caches, then reuse them to persist
+  access even after password changes or session invalidation.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1202-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1202.signal.insecure_token_storage
+  description: Detects insecure token storage locations
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1202*'
-  - pattern: '*persistence*'
-languages: []
+  - regex: 'localStorage\.setItem\s*\([^)]*(?:token|access_token|refresh_token|jwt|bearer)'
+    flags: i
+  - regex: 'sessionStorage\.setItem\s*\([^)]*(?:token|access_token|refresh_token|jwt|bearer)'
+    flags: i
+  - regex: 'document\.cookie\s*=.*(?:token|access_token|refresh_token)'
+    flags: i
+  - pattern: 'cookie: { secure: false'
+  - pattern: 'httpOnly: false'
+  - pattern: 'sameSite: none'
+- id: SAFE-T1202.signal.token_file_cache
+  description: Detects file-based token caching without encryption
+  heuristics:
+  - regex: 'writeFile.*(?:token|credential|secret|oauth)'
+    flags: i
+  - regex: 'open\s*\(.*(?:\.token|token\.json|credentials\.json|oauth_cache)'
+    flags: i
+  - regex: 'json\.dump.*(?:access_token|refresh_token)'
+    flags: i
+  - regex: 'fs\.write.*(?:token|secret|key)'
+    flags: i
+- id: SAFE-T1202.signal.long_lived_tokens
+  description: Detects tokens configured with excessive lifetimes
+  heuristics:
+  - regex: 'expires_in\s*[:=]\s*(?:0|86400{2,}|\d{8,})'
+  - regex: 'maxAge\s*[:=]\s*(?:Infinity|\d{10,})'
+  - pattern: 'expires: never'
+  - pattern: 'refresh_token_lifetime'
+  - regex: 'token_lifetime\s*[:=]\s*\d{6,}'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

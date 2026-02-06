@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://safe-mcp.dev/schemas/pattern.schema.json",
+  "title": "SAFE-MCP Pattern Library Schema",
+  "description": "Schema for reusable pattern definition files",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["namespace", "description", "patterns"],
+  "properties": {
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Namespace prefix for patterns (e.g., 'js', 'py', 'common', 'py3', 'js_es6')"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable description of this pattern file"
+    },
+    "patterns": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "heuristics"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Description of what this pattern group detects"
+          },
+          "heuristics": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "pattern": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "regex": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "all_of": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "pattern": { "type": "string", "minLength": 1 },
+                      "regex": { "type": "string", "minLength": 1 }
+                    },
+                    "anyOf": [
+                      { "required": ["pattern"] },
+                      { "required": ["regex"] }
+                    ]
+                  }
+                },
+                "flags": {
+                  "type": "string"
+                },
+                "window": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "anyOf": [
+                { "required": ["pattern"] },
+                { "required": ["regex"] },
+                { "required": ["all_of"] }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

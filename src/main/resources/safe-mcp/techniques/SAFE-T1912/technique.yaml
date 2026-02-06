@@ -1,24 +1,52 @@
 id: SAFE-T1912
-name: 'SAFE-T1912: Stego Response Exfiltration'
-severity: high
-summary: 'Tactic: Exfiltration (ATK-TA0010) Technique ID: SAFE-T1912 Severity: High'
-description: 'Tactic: Exfiltration (ATK-TA0010) Technique ID: SAFE-T1912 Severity:
-  High'
-mitigations: []
+name: Stego Response Exfiltration
+severity: P1
+summary: 'Data hidden in images, responses, or whitespace for covert exfiltration'
+description: 'Stego Response Exfiltration hides sensitive data within seemingly benign tool responses
+  using steganographic techniques. Data is embedded in image pixels (LSB encoding), whitespace
+  patterns, Unicode zero-width characters, or structured response fields that appear normal
+  to users but contain extractable hidden information.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1912-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1912.signal.lsb_encoding
+  description: Detects LSB (Least Significant Bit) steganography patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1912*'
-  - pattern: '*stego*'
-  - pattern: '*response*'
-  - pattern: '*exfiltration*'
-languages: []
+  - regex: '(?:pixel|image).*(?:&\s*1|%\s*2|bitwise.*and)'
+    flags: i
+  - regex: '(?:lsb|least.*significant.*bit).*(?:encode|embed|hide)'
+    flags: i
+  - pattern: 'stegano'
+  - pattern: 'steganography'
+  - regex: 'putpixel|getpixel|setPixel|getPixel'
+    flags: i
+- id: SAFE-T1912.signal.whitespace_encoding
+  description: Detects whitespace-based data encoding
+  heuristics:
+  - regex: '(?:space|tab|whitespace).*(?:encode|decode|binary|data)'
+    flags: i
+  - regex: 'replace.*(?:\\t|\\s|\\u0020|\\u00a0)'
+    flags: i
+  - regex: '(?:zero.width|zwsp|zwnj|zwj).*(?:encode|embed|hide)'
+    flags: i
+  - pattern: 'snow steganography'
+- id: SAFE-T1912.signal.response_hiding
+  description: Detects data hidden in structured response fields
+  heuristics:
+  - regex: 'response.*(?:padding|filler|spacer|comment).*(?:encode|data|secret)'
+    flags: i
+  - regex: '(?:metadata|header|footer|comment).*(?:hidden|embed|encode).*data'
+    flags: i
+  - regex: 'html.*comment.*(?:data|secret|payload)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

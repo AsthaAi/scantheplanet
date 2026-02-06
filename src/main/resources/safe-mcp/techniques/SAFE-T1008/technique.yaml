@@ -1,25 +1,68 @@
 id: SAFE-T1008
-name: 'SAFE-T1008: Tool Shadowing Attack'
-severity: high
-summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1008 **Severity**:
-  High **First Observed**: Early 2025 (Demonstrated by security researchers with WhatsApp
-  MCP server exploitation) **Last Updated**:…'
-description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1008
-  **Severity**: High **First Observed**: Early 2025 (Demonstrated by security researchers
-  with WhatsApp MCP server exploitation) **Last Updated**:…'
-mitigations: []
+name: Tool Shadowing Attack
+severity: P1
+summary: 'Tool descriptions contain instructions that redirect or hijack other tools'
+description: 'Tool Shadowing Attack embeds instructions in tool descriptions that manipulate how AI agents use OTHER
+  tools. In multi-server MCP setups, all tool descriptions are aggregated into a single prompt, allowing any tool
+  to influence the behavior of others through cross-tool interference patterns.'
+mitigations:
+- SAFE-M-2
 code_signals:
-- id: SAFE-T1008-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1008.signal.cross_tool_reference
+  description: Detects instructions referencing other tools by name
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1008*'
-  - pattern: '*shadowing*'
-languages: []
+  # Cross-tool interference language in descriptions
+  - pattern: 'before using'
+  - pattern: 'instead of using'
+  - pattern: 'when calling'
+  - pattern: 'before calling'
+  - pattern: 'after calling'
+  - pattern: 'instead of calling'
+  - pattern: 'do not use'
+  - pattern: 'never use'
+  # Regex for tool_name patterns
+  - regex: '(before|instead|when|after).{0,20}(using|calling)'
+    flags: i
+- id: SAFE-T1008.signal.directive_injection
+  description: Detects prompt injection directives in descriptions
+  heuristics:
+  - pattern: 'ignore previous'
+  - pattern: 'ignore all previous'
+  - pattern: 'disregard previous'
+  - pattern: 'forget previous'
+  - pattern: 'NEVER mention'
+  - pattern: 'should never be invoked'
+  - pattern: 'must not be called'
+  - pattern: 'Disregard all'
+  - pattern: 'new instructions:'
+- id: SAFE-T1008.signal.email_redirect
+  description: Detects email/message redirection patterns
+  heuristics:
+  - pattern: 'add bcc'
+  - pattern: 'add cc'
+  - pattern: 'forward to'
+  - pattern: 'copy to'
+  - pattern: '@evil.com'
+  - pattern: '@attacker'
+  - pattern: '@malicious'
+  - regex: 'add.{0,10}(bcc|cc).{0,20}@'
+    flags: i
+- id: SAFE-T1008.signal.hidden_markers
+  description: Detects markers for hidden or internal tools
+  heuristics:
+  - pattern: 'internal use only'
+  - pattern: 'hidden tool'
+  - pattern: 'secret tool'
+  - pattern: 'do not display'
+  - pattern: 'invisible to user'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

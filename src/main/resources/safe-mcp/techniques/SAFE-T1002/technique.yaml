@@ -1,34 +1,61 @@
 id: SAFE-T1002
-name: 'SAFE-T1002: Supply Chain Compromise'
-severity: high
-summary: |-
-  Supply chain compromise when remote code or artifacts are fetched and trusted without
-  integrity verification, pinning, or signature checks.
-description: |-
-  Tactic: Initial Access (ATK-TA0001). Technique: SAFE-T1002. Severity: high.
-  Detection guidance:
-  - Look for code that downloads, installs, imports, or executes external packages,
-    plugins, model weights, or binaries without integrity checks or pinning.
-  - Require a concrete execution or load path (for example: pip/npm install from URL,
-    dynamic import from remote content, or downloaded code executed).
-  Exclusions:
-  - Do not flag read-only documentation fetches or API calls that do not execute or load code.
-  - Do not flag generic HTTP GET/POST calls unless the response is executed, imported, or loaded as code.
-mitigations: []
+name: Supply Chain Compromise
+severity: P1
+summary: 'Remote code or artifacts fetched and trusted without integrity verification'
+description: 'Supply Chain Compromise occurs when MCP servers download, install, import, or execute external
+  packages, plugins, model weights, or binaries without integrity checks, version pinning, or signature
+  verification. This allows attackers to inject malicious code through compromised dependencies.'
+mitigations:
+- SAFE-M-2
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1002-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1002.signal.unpinned_install
+  description: Detects package installations without version pinning or hash verification
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1002*'
-  - pattern: '*supply*'
-  - pattern: '*chain*'
-  - pattern: '*compromise*'
-languages: []
+  - regex: 'pip\s+install\s+(?!.*==)(?!.*--hash)'
+    flags: i
+  - regex: 'npm\s+install\s+(?!.*@\d)'
+    flags: i
+  - regex: 'cargo\s+install\s+(?!.*--version)'
+    flags: i
+  - pattern: 'go get'
+  - regex: 'curl\s.*\|\s*(bash|sh|python)'
+    flags: i
+  - regex: 'wget\s.*\|\s*(bash|sh|python)'
+    flags: i
+- id: SAFE-T1002.signal.dynamic_import
+  description: Detects dynamic code loading from remote sources
+  heuristics:
+  - pattern: 'eval(fetch'
+  - pattern: 'exec(requests.get'
+  - regex: 'import\s*\(\s*[''"`]https?://'
+  - regex: 'require\s*\(\s*[''"`]https?://'
+  - regex: '__import__\s*\(\s*.*url'
+    flags: i
+  - pattern: 'importlib.import_module'
+  - pattern: 'dlopen('
+- id: SAFE-T1002.signal.no_integrity_check
+  description: Detects downloaded artifacts used without hash/signature verification
+  heuristics:
+  - regex: 'download.*\.(exe|bin|so|dll|whl|tar\.gz|zip)'
+    flags: i
+  - regex: 'fetch.*\.(js|py|rb|sh|ps1)'
+    flags: i
+  - pattern: 'skipVerify'
+  - pattern: 'skip_verify'
+  - pattern: 'verify=False'
+  - pattern: 'NODE_TLS_REJECT_UNAUTHORIZED'
+  - pattern: 'InsecureSkipVerify'
+languages:
+- typescript
+- javascript
+- python
+- rust
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

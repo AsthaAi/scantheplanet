@@ -1,20 +1,54 @@
 id: SAFE-T1309
-name: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
-severity: high
-summary: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
-description: 'SAFE-T1309: Privileged Tool Invocation via Prompt Manipulation'
-mitigations: []
+name: Privileged Tool via Prompt Injection
+severity: P0
+summary: 'Prompt injection tricks LLM into selecting and invoking privileged tools'
+description: 'Privileged Tool via Prompt Injection exploits LLM-based tool selection where the model
+  chooses which tool to invoke based on natural language. Attackers craft prompts that manipulate
+  the LLM into selecting privileged or dangerous tools, bypassing access controls that only exist
+  at the prompt/UI layer rather than at the tool execution layer.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1309-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1309.signal.dynamic_tool_selection
+  description: Detects LLM-controlled tool selection without access control enforcement
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1309*'
-languages: []
+  - regex: 'tool_choice\s*[:=]\s*[''"]auto[''"]'
+  - regex: 'function_call\s*[:=]\s*[''"]auto[''"]'
+  - regex: 'available_tools\s*[:=]\s*(?:all|tools|\*)'
+    flags: i
+  - pattern: 'tool_selection: unrestricted'
+  - regex: 'allow_all_tools\s*[:=]\s*(?:true|True)'
+- id: SAFE-T1309.signal.missing_tool_acl
+  description: Detects missing access control on tool execution
+  heuristics:
+  - regex: 'execute_tool\s*\(\s*(?:tool_name|name)\s*[,)]'
+    flags: i
+  - regex: 'callTool\s*\(\s*(?:name|toolName)\s*[,)]'
+    flags: i
+  - regex: 'tools\[.*\]\s*\(\s*(?:params|args|input)\s*\)'
+    flags: i
+  - pattern: 'skip_permission_check'
+  - pattern: 'bypass_tool_acl'
+- id: SAFE-T1309.signal.prompt_tool_escalation
+  description: Detects patterns where prompts influence privileged tool selection
+  heuristics:
+  - regex: 'system.*(?:message|prompt).*(?:tool|function|action)'
+    flags: i
+  - regex: '(?:use|call|invoke|execute)\s+(?:the\s+)?(?:admin|system|privileged|dangerous)\s+tool'
+    flags: i
+  - regex: 'tool_whitelist.*(?:false|disable|none|\[\])'
+    flags: i
+  - pattern: 'allowed_tools: []'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

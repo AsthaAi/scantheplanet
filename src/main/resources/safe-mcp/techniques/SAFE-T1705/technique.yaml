@@ -1,26 +1,53 @@
 id: SAFE-T1705
-name: 'SAFE-T1705: Cross-Agent Instruction Injection'
-severity: high
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1705 **Severity**:
-  Critical **First Observed**: March 2025 (Academic Research) **Last Updated**: 2025-07-24'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1705
-  **Severity**: Critical **First Observed**: March 2025 (Academic Research) **Last
-  Updated**: 2025-07-24'
-mitigations: []
+name: Cross-Agent Instruction Injection
+severity: P0
+summary: 'Agent-to-agent message injection contaminates multi-agent workflows'
+description: 'Cross-Agent Instruction Injection targets multi-agent MCP architectures where agents
+  communicate by passing messages or tool results. Attackers inject malicious instructions into
+  one agent that propagate to other agents in the workflow, contaminating the entire multi-agent
+  pipeline through message passing, shared context, or tool output forwarding.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1705-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1705.signal.agent_message_injection
+  description: Detects unsanitized message passing between agents
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1705*'
-  - pattern: '*cross*'
-  - pattern: '*agent*'
-  - pattern: '*instruction*'
-languages: []
+  - regex: 'agent.*(?:send|forward|pass).*(?:message|instruction|prompt)'
+    flags: i
+  - regex: '(?:message|context|instruction).*(?:forward|relay|propagate).*agent'
+    flags: i
+  - regex: 'inter_agent.*(?:message|data|context)'
+    flags: i
+  - pattern: 'agent_to_agent'
+  - pattern: 'relay_message'
+- id: SAFE-T1705.signal.multi_agent_contamination
+  description: Detects patterns enabling multi-agent prompt contamination
+  heuristics:
+  - regex: 'agent.*output.*(?:system|prompt|instruction).*(?:next|downstream).*agent'
+    flags: i
+  - regex: 'shared_context.*(?:agent|model|llm)'
+    flags: i
+  - regex: '(?:orchestrator|coordinator).*(?:broadcast|distribute).*(?:message|instruction)'
+    flags: i
+  - pattern: 'propagate_instructions'
+- id: SAFE-T1705.signal.unsanitized_handoff
+  description: Detects agent handoff without output sanitization
+  heuristics:
+  - regex: 'handoff.*(?:raw|unsanitized|unfiltered)'
+    flags: i
+  - regex: 'delegate.*(?:tool|task).*(?:without|no).*(?:valid|saniti|filter)'
+    flags: i
+  - regex: 'agent.*(?:result|output).*(?:directly|raw).*(?:input|prompt)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,26 +1,54 @@
 id: SAFE-T1707
-name: 'SAFE-T1707: CSRF Token Relay'
-severity: high
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1707 **Severity**:
-  High **First Observed**: CSRF vulnerabilities in OAuth deployments documented in
-  security research by at least 2015; SAFE-T1707 adapts…'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1707
-  **Severity**: High **First Observed**: CSRF vulnerabilities in OAuth deployments
-  documented in security research by at least 2015; SAFE-T1707 adapts…'
-mitigations: []
+name: CSRF Token Relay
+severity: P1
+summary: 'Missing CSRF tokens or state parameter reuse in state-changing MCP requests'
+description: 'CSRF Token Relay exploits missing or improperly validated CSRF tokens in MCP state-changing
+  requests. Attackers forge cross-site requests or reuse OAuth state parameters to trigger
+  unauthorized actions, manipulate tool configurations, or hijack authentication flows through
+  the victim browser or agent.'
+mitigations:
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1707-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1707.signal.missing_csrf
+  description: Detects missing CSRF protection on state-changing endpoints
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1707*'
-  - pattern: '*csrf*'
-  - pattern: '*relay*'
-languages: []
+  - regex: 'csrf.*(?:false|disable|skip|off|none)'
+    flags: i
+  - regex: '(?:post|put|delete|patch).*(?:without|no|skip).*csrf'
+    flags: i
+  - pattern: 'csrf_exempt'
+  - pattern: 'csrfProtection: false'
+  - pattern: 'disable_csrf'
+  - regex: '@csrf_exempt|@no_csrf'
+- id: SAFE-T1707.signal.state_reuse
+  description: Detects OAuth state parameter reuse or bypass
+  heuristics:
+  - regex: 'state\s*[:=]\s*[''"](?:static|fixed|hardcoded|default)'
+    flags: i
+  - regex: 'state.*(?:reuse|static|constant|fixed)'
+    flags: i
+  - regex: 'generate_state.*(?:false|skip|disable)'
+    flags: i
+  - pattern: 'skip_state_validation'
+  - regex: 'state\s*[:=]\s*[''"](?:abc|123|test|dummy)'
+    flags: i
+- id: SAFE-T1707.signal.cors_misconfiguration
+  description: Detects CORS misconfigurations enabling cross-origin attacks
+  heuristics:
+  - regex: 'Access-Control-Allow-Origin.*\*'
+  - regex: 'cors.*origin.*(?:\*|true|any)'
+    flags: i
+  - pattern: 'credentials: true'
+  - regex: 'allowCredentials.*true.*origin.*\*'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,27 +1,57 @@
 id: SAFE-T1110
-name: 'SAFE-T1110: Multimodal Prompt Injection via Images/Audio'
-severity: high
-summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1110 **Severity**:
-  High **First Observed**: August 2025 (Research-based analysis) **Last Updated**:
-  2025-08-23'
-description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1110 **Severity**:
-  High **First Observed**: August 2025 (Research-based analysis) **Last Updated**:
-  2025-08-23'
-mitigations: []
+name: Multimodal Prompt Injection via Images/Audio
+severity: P1
+summary: 'Malicious instructions embedded in images or audio bypass text-based input filters'
+description: 'Multimodal Prompt Injection embeds malicious instructions within images, audio, or other
+  non-text media that are processed by LLMs. Techniques include steganographic embedding in pixel
+  data, OCR-extractable text injection, adversarial visual patterns, and metadata injection in media
+  files. These bypass text-based sanitization since the payload is in a non-text modality.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1110-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1110.signal.image_to_llm
+  description: Detects image processing output piped directly to LLM without sanitization
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1110*'
-  - pattern: '*multimodal*'
-  - pattern: '*injection*'
-  - pattern: '*images*'
-languages: []
+  - regex: 'ocr\s*\(.*\).*(?:prompt|message|chat|completion)'
+    flags: i
+  - regex: 'tesseract.*(?:prompt|message|chat)'
+    flags: i
+  - regex: 'imageToText.*(?:prompt|send|submit)'
+    flags: i
+  - regex: 'vision.*(?:complete|generate|chat)'
+    flags: i
+  - pattern: 'extractTextFromImage'
+- id: SAFE-T1110.signal.media_metadata
+  description: Detects media metadata extraction that could contain injected instructions
+  heuristics:
+  - regex: 'exif\.(?:read|extract|parse|get)'
+    flags: i
+  - regex: 'metadata\.(?:comment|description|title|subject)'
+    flags: i
+  - regex: 'id3.*(?:comment|lyrics|text)'
+    flags: i
+  - pattern: 'getImageDescription'
+  - regex: 'PIL\.ExifTags'
+- id: SAFE-T1110.signal.steganographic
+  description: Detects steganographic encoding/decoding patterns
+  heuristics:
+  - pattern: 'stegano'
+  - pattern: 'LSBSteg'
+  - regex: 'pixel.*(?:encode|decode|embed|extract)'
+    flags: i
+  - regex: 'watermark.*(?:embed|extract|decode)'
+    flags: i
+  - regex: 'bitwise.*(?:and|or|xor).*(?:image|pixel)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

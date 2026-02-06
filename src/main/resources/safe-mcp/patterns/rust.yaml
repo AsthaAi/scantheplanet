@@ -1,0 +1,23 @@
+namespace: rust
+description: Rust-specific patterns
+
+patterns:
+  # Command execution patterns
+  command_new:
+    description: Detects std::process::Command usage
+    heuristics:
+      - regex: '\b(?:std::)?(?:process::)?Command::new\s*\('
+
+  command_with_args:
+    description: Detects Command with argument passing
+    heuristics:
+      - regex: 'Command::new\s*\([^)]*\)\.arg\s*\('
+      - regex: 'Command::new\s*\([^)]*\)\.args\s*\('
+
+  # File read patterns
+  file_read_direct:
+    description: Detects direct return of file contents
+    heuristics:
+      - regex: 'return\s+std::fs::read_to_string\s*\('
+      - regex: 'return\s+fs::read_to_string\s*\('
+      - regex: 'return\s+.*\.read_to_string\s*\('

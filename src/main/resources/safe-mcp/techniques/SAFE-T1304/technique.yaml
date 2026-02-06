@@ -1,32 +1,56 @@
 id: SAFE-T1304
-name: 'SAFE-T1304: Credential Relay Chain'
-severity: high
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1304
-  **Severity**: High **First Observed**: Not observed in production **Last Updated**:
-  2025-01-02'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1304
-  **Severity**: High **First Observed**: Not observed in production **Last Updated**:
-  2025-01-02'
-mitigations: []
+name: Credential Relay Chain
+severity: P1
+summary: 'Tokens reused or forwarded across services without proper scoping or validation'
+description: 'Credential Relay Chain exploits token reuse across MCP service boundaries. Attackers
+  capture tokens from one service interaction and replay them in tool-to-tool calls, cross-service
+  requests, or downstream API invocations without proper audience validation, scope restriction,
+  or token binding.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1304-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1304.signal.token_forwarding
+  description: Detects bearer tokens forwarded across service boundaries
   heuristics:
-  - pattern: '*oauth_token*'
-  - pattern: '*bearer_token*'
-  - pattern: '*jwt_token*'
-  - pattern: '*access_token*'
-  - pattern: '*different_tool_same_token*'
-  - pattern: '*token_scope_violation*'
-  - pattern: '*cross_service_auth*'
-  - pattern: '*rapid_privilege_increase*'
-  - pattern: '*admin_operations_after_token_theft*'
-  - pattern: '*unauthorized_elevated_access*'
-languages: []
+  - regex: 'Authorization.*Bearer.*(?:req\.|request\.|context\.|ctx\.)'
+    flags: i
+  - regex: 'headers\[.Authorization.\]\s*=\s*(?:req|request|context|ctx)\.'
+    flags: i
+  - regex: 'token\s*[:=]\s*(?:req|request|context|ctx)\..*token'
+    flags: i
+  - pattern: 'forwardAuth'
+  - pattern: 'relay_token'
+  - pattern: 'pass_through_token'
+- id: SAFE-T1304.signal.cross_service_reuse
+  description: Detects token reuse patterns across different service audiences
+  heuristics:
+  - regex: 'audience.*(?:skip|ignore|any|\*)'
+    flags: i
+  - regex: 'aud.*(?:validation|check).*(?:false|disable|skip)'
+    flags: i
+  - pattern: 'skip_audience_check'
+  - pattern: 'ignore_audience'
+  - regex: 'scope.*(?:inherit|forward|propagate)'
+    flags: i
+- id: SAFE-T1304.signal.tool_to_tool_creds
+  description: Detects credential passing in tool-to-tool calls
+  heuristics:
+  - regex: 'tool.*(?:invoke|call|execute).*(?:token|credential|auth|bearer)'
+    flags: i
+  - regex: 'callTool\s*\(.*(?:headers|auth|token)'
+    flags: i
+  - regex: 'downstream.*(?:token|auth|credential)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

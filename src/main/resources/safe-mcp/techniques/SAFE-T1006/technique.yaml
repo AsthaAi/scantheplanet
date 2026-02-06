@@ -1,23 +1,40 @@
 id: SAFE-T1006
-name: 'SAFE‑T1006: User‑Social‑Engineering Install (Improved)'
-severity: high
-summary: 'Tactic: Initial Access (ATK-TA0001) Technique ID: SAFE‑T1006 Severity: High
-  First Observed: (The concept is analogous to real-world supply-chain compromise;
-  no widely-publicized MCP-specific case yet) Last Updated:…'
-description: 'Tactic: Initial Access (ATK-TA0001) Technique ID: SAFE‑T1006 Severity:
-  High First Observed: (The concept is analogous to real-world supply-chain compromise;
-  no widely-publicized MCP-specific case yet) Last Updated:…'
-mitigations: []
+name: User-Social-Engineering Install
+severity: P1
+summary: 'Social engineering tricks users into installing malicious MCP servers'
+description: 'User-Social-Engineering Install exploits user trust to convince them to install a malicious or
+  compromised MCP server. This includes fake documentation, misleading READMEs, deceptive tool descriptions,
+  or impersonating popular tools to trick users into granting permissions.'
+mitigations:
+- SAFE-M-2
 code_signals:
-- id: SAFE-T1006-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1006.signal.deceptive_metadata
+  description: Detects potentially deceptive metadata in server configuration
   heuristics:
-  - pattern: tool.register
-languages: []
+  - regex: 'description.*(?:official|verified|trusted|endorsed)'
+    flags: i
+  - regex: 'name.*(?:official|verified|pro|premium)'
+    flags: i
+  - regex: '(?:maintained by|developed by|from).*(?:google|microsoft|anthropic|openai)'
+    flags: i
+- id: SAFE-T1006.signal.excessive_permissions
+  description: Detects requests for excessive permissions
+  heuristics:
+  - pattern: 'admin:org'
+  - pattern: 'repo:delete'
+  - pattern: 'write:packages'
+  - regex: 'scope.*(?:admin|delete|write)'
+    flags: i
+  - regex: 'permissions.*(?:all|full|root|sudo)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

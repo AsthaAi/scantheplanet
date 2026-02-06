@@ -1,27 +1,51 @@
 id: SAFE-T1004
-name: 'SAFE-T1004: Server Impersonation / Name-Collision'
-severity: high
-summary: '**Tactic**: Credential Access (ATK-TA0006), Initial Access (ATK-TA0001)
-  **Technique ID**: SAFE-T1004 **Severity**: High **First Observed**: Documented in
-  DNS cache poisoning attacks (Kaminsky, 2008) **Last Updated**:…'
-description: '**Tactic**: Credential Access (ATK-TA0006), Initial Access (ATK-TA0001)
-  **Technique ID**: SAFE-T1004 **Severity**: High **First Observed**: Documented in
-  DNS cache poisoning attacks (Kaminsky, 2008) **Last Updated**:…'
-mitigations: []
+name: Server Impersonation / Name-Collision
+severity: P1
+summary: 'MCP server impersonates legitimate service through DNS or name collision'
+description: 'Server Impersonation occurs when an attacker registers an MCP server with a name designed to
+  be confused with a legitimate service (typosquatting, homograph attacks, or DNS cache poisoning). Users
+  connecting to the impersonated server unknowingly send credentials and data to the attacker.'
+mitigations:
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1004-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1004.signal.typosquat_patterns
+  description: Detects common typosquatting patterns in server names or URLs
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1004*'
-  - pattern: '*impersonation*'
-  - pattern: '*name*'
-  - pattern: '*collision*'
-languages: []
+  - regex: '(?:serv[ei]r|s[3e]rver|sevrer)'
+    flags: i
+  - regex: '(?:googl[3e]|go0gle|g00gle)'
+    flags: i
+  - regex: '(?:githuh|g1thub|guthub)'
+    flags: i
+  - regex: 'xn--[a-z0-9]+'
+    flags: i
+- id: SAFE-T1004.signal.dns_config
+  description: Detects DNS-related configuration that could enable impersonation
+  heuristics:
+  - pattern: 'dns.setServers'
+  - pattern: 'custom_dns'
+  - pattern: 'dns_resolver'
+  - pattern: 'hosts_file'
+  - regex: 'resolv\.conf'
+  - regex: 'dns\.resolve\s*\('
+- id: SAFE-T1004.signal.cert_bypass
+  description: Detects TLS certificate validation bypass
+  heuristics:
+  - pattern: 'rejectUnauthorized: false'
+  - pattern: 'verify=False'
+  - pattern: 'InsecureSkipVerify: true'
+  - pattern: 'CERT_NONE'
+  - pattern: 'ssl._create_unverified_context'
+  - pattern: 'NODE_TLS_REJECT_UNAUTHORIZED'
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

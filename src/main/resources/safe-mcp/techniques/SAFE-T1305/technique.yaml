@@ -1,27 +1,52 @@
 id: SAFE-T1305
-name: 'SAFE-T1305: Host OS Privilege Escalation (RCE)'
-severity: critical
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1305
-  **Severity**: Critical **First Observed**: Not observed in production (Theoretical)
-  **Last Updated**: 2025-12-09'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1305
-  **Severity**: Critical **First Observed**: Not observed in production (Theoretical)
-  **Last Updated**: 2025-12-09'
-mitigations: []
+name: Host OS Privilege Escalation
+severity: P0
+summary: 'MCP server exploits host OS vulnerabilities to escalate from service to root privileges'
+description: 'Host OS Privilege Escalation exploits operating system vulnerabilities or misconfigurations
+  from within an MCP server process to gain root or administrative access on the host. Attack vectors
+  include setuid binary abuse, kernel exploits, capability escalation, and accessing sensitive system
+  files like /etc/shadow.'
+mitigations:
+- SAFE-M-3
 code_signals:
-- id: SAFE-T1305-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1305.signal.setuid_abuse
+  description: Detects setuid/setgid manipulation and binary exploitation
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1305*'
-  - pattern: '*host*'
-  - pattern: '*privilege*'
-  - pattern: '*escalation*'
-languages: []
+  - regex: 'chmod\s+[0-7]*[4-7][0-7]{2}\s'
+  - regex: 'chmod\s+[ug]\+s\s'
+  - pattern: 'setuid'
+  - pattern: 'setgid'
+  - regex: 'chown\s+root\s'
+  - regex: 'find\s.*-perm.*4000'
+- id: SAFE-T1305.signal.kernel_exploit
+  description: Detects patterns associated with kernel exploitation
+  heuristics:
+  - regex: '/proc/(?:kallsyms|kcore|kmem|modules)'
+  - regex: '/dev/(?:mem|kmem|port)'
+  - pattern: 'ioctl('
+  - regex: 'mmap\s*\(.*(?:PROT_EXEC|MAP_FIXED)'
+  - pattern: 'ptrace('
+  - regex: 'prctl\s*\(.*PR_SET_'
+- id: SAFE-T1305.signal.sensitive_file_access
+  description: Detects access to sensitive system files for privilege escalation
+  heuristics:
+  - pattern: '/etc/shadow'
+  - pattern: '/etc/passwd'
+  - pattern: '/etc/sudoers'
+  - regex: '/etc/(?:ssh|pam\.d|security)'
+  - pattern: '/root/.ssh'
+  - pattern: '/proc/self/exe'
+  - regex: '/var/(?:log/auth|run/sudo)'
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

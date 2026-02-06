@@ -1,27 +1,53 @@
 id: SAFE-T2103
-name: SAFE-T2103 - Code Sabotage via Malicious Agentic Pull Request
-severity: high
-summary: '**Tactics:** Impact, Initial Access, Persistence, Credential Access **Technique
-  ID:** SAFE-T2103 **Status:** Stable (v1.0) **First Observed:** July 2025 (Amazon
-  Q VS Code PR incident) [1][2] **Last Updated:** 2025-11-22…'
-description: '**Tactics:** Impact, Initial Access, Persistence, Credential Access
-  **Technique ID:** SAFE-T2103 **Status:** Stable (v1.0) **First Observed:** July
-  2025 (Amazon Q VS Code PR incident) [1][2] **Last Updated:** 2025-11-22…'
-mitigations: []
+name: Code Sabotage via Malicious PR
+severity: P0
+summary: 'Automated PR creation with malicious code changes or CI/CD pipeline manipulation'
+description: 'Code Sabotage via Malicious PR uses MCP tools with repository access to create automated
+  pull requests containing malicious code changes, backdoors, or CI/CD pipeline modifications.
+  Attackers manipulate build scripts, inject vulnerabilities, or alter deployment configurations
+  through automated commits that bypass normal code review.'
+mitigations:
+- SAFE-M-2
+- SAFE-M-3
 code_signals:
-- id: SAFE-T2103-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2103.signal.automated_pr
+  description: Detects automated PR creation with suspicious patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t2103*'
-  - pattern: '*code*'
-  - pattern: '*sabotage*'
-  - pattern: '*malicious*'
-languages: []
+  - regex: 'createPullRequest|create_pull_request|gh\s+pr\s+create'
+    flags: i
+  - regex: 'git\s+push.*(?:--force|-f)'
+  - regex: '(?:auto|bot).*(?:commit|push|merge|pr)'
+    flags: i
+  - regex: 'git\s+commit.*(?:-m|--message).*(?:auto|bot|fix|update)'
+    flags: i
+- id: SAFE-T2103.signal.cicd_manipulation
+  description: Detects CI/CD pipeline file modification
+  heuristics:
+  - regex: '(?:write|modify|edit).*(?:\.github/workflows|\.gitlab-ci|Jenkinsfile|\.circleci)'
+    flags: i
+  - regex: '(?:yaml|yml).*(?:pipeline|workflow|action|deploy)'
+    flags: i
+  - regex: 'Dockerfile.*(?:modify|write|edit|create)'
+    flags: i
+  - regex: '(?:script|command).*(?:deploy|release|publish)'
+    flags: i
+- id: SAFE-T2103.signal.code_injection
+  description: Detects code injection patterns in automated changes
+  heuristics:
+  - regex: 'git\s+(?:add|commit).*(?:\.env|secret|credential|config)'
+    flags: i
+  - regex: '(?:eval|exec|system|spawn).*(?:inject|backdoor|payload)'
+    flags: i
+  - regex: '(?:write|append).*(?:authorized_keys|sudoers|crontab)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

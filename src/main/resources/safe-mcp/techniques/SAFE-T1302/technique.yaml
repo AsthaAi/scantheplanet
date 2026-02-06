@@ -1,24 +1,56 @@
 id: SAFE-T1302
-name: 'SAFE-T1302: High-Privilege Tool Abuse'
-severity: critical
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1302
-  **Severity**: Critical **First Observed**: 2024 **Last Updated**: 2025-12-08'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1302
-  **Severity**: Critical **First Observed**: 2024 **Last Updated**: 2025-12-08'
-mitigations: []
+name: High-Privilege Tool Abuse
+severity: P1
+summary: 'Tools with admin or root access exploited to perform unauthorized privileged operations'
+description: 'High-Privilege Tool Abuse occurs when MCP tools are configured with administrative,
+  root, or superuser access to databases, APIs, or system resources. Attackers exploit these tools
+  through prompt injection or direct manipulation to perform privileged operations such as modifying
+  access controls, reading sensitive data, or escalating their own permissions.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1302-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1302.signal.admin_api_access
+  description: Detects tools with administrative API or database access
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1302*'
-  - pattern: '*high*'
-  - pattern: '*privilege*'
-languages: []
+  - regex: 'role\s*[:=]\s*[''"](?:admin|superadmin|root|dba|owner)'
+    flags: i
+  - regex: 'grant\s+all\s+privileges'
+    flags: i
+  - regex: 'ALTER\s+(?:USER|ROLE|TABLE|DATABASE)'
+    flags: i
+  - pattern: 'db.admin()'
+  - regex: '(?:DROP|CREATE|ALTER)\s+(?:DATABASE|SCHEMA|USER)'
+    flags: i
+- id: SAFE-T1302.signal.privileged_operations
+  description: Detects unrestricted privileged operations without auth checks
+  heuristics:
+  - regex: 'sudo\s+'
+  - pattern: 'runAs: root'
+  - pattern: 'run_as_root'
+  - regex: 'setuid|setgid|seteuid'
+  - regex: 'os\.set(?:uid|gid|euid)\s*\('
+  - regex: 'process\.set(?:uid|gid)\s*\('
+- id: SAFE-T1302.signal.missing_auth_check
+  description: Detects privileged operations without authorization verification
+  heuristics:
+  - regex: 'skip_auth.*(?:true|True)'
+    flags: i
+  - regex: 'auth.*(?:disabled|false|skip|bypass|none)'
+    flags: i
+  - pattern: 'requireAuth: false'
+  - pattern: 'authenticate: false'
+  - regex: '@no_auth|@skip_auth|@public'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

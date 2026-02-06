@@ -1,24 +1,71 @@
 id: SAFE-T1408
-name: 'SAFE-T1408: OAuth Protocol Downgrade'
-severity: high
-summary: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1408
-  **Severity**: High **First Observed**: Documented in OAuth 2.0 Security BCP (2020)
-  **Last Updated**: November 2025 **Author**: Ryan Jennings'
-description: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1408
-  **Severity**: High **First Observed**: Documented in OAuth 2.0 Security BCP (2020)
-  **Last Updated**: November 2025 **Author**: Ryan Jennings'
-mitigations: []
+name: OAuth Protocol Downgrade
+severity: P1
+summary: 'OAuth clients are downgraded to the implicit flow, bypassing PKCE and exposing tokens to interception.'
+description: 'An attacker forces or coerces a client to use the OAuth 2.0 implicit flow instead of the authorization
+  code flow with PKCE. Tokens delivered in URL fragments are easier to capture via logs, referrers, or malicious
+  scripts, enabling token theft and session hijacking.
+
+  This technique detects the presence of implicit flow configuration, which indicates potential vulnerability.
+  The authorization code flow with PKCE should always be preferred over implicit flow for security.'
+mitigations:
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1408-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1408.signal.implicit_flow
+  description: Detects OAuth configurations that use or allow implicit flow
   heuristics:
-  - pattern: token
-  - pattern: id_token
-languages: []
+  # Explicit implicit flow configuration
+  - pattern: 'response_type=token'
+  - pattern: 'response_type: token'
+  - pattern: "response_type: 'token'"
+  - pattern: 'response_type: "token"'
+  - pattern: 'grant_type=implicit'
+  - pattern: 'implicit_grant'
+  - pattern: 'implicitGrant'
+  - pattern: 'ImplicitGrant'
+  # Regex for variations (case-insensitive)
+  - regex: "response_type\\s*[=:]\\s*[\"'`]?token[\"'`]?"
+    flags: i
+  - regex: "grant_type\\s*[=:]\\s*[\"'`]?implicit[\"'`]?"
+    flags: i
+  - regex: 'implicit.*flow'
+    flags: i
+  - regex: 'allow.*implicit'
+    flags: i
+- id: SAFE-T1408.signal.token_in_fragment
+  description: Detects access token extraction from URL fragments (implicit flow pattern)
+  heuristics:
+  # Explicit fragment token patterns
+  - pattern: '#access_token='
+  # Fragment parsing combined with token extraction
+  - all_of:
+      - pattern: 'location.hash'
+      - regex: 'access[_-]?token'
+    window: 3
+    flags: i
+  - all_of:
+      - pattern: 'window.location.hash'
+      - regex: 'access[_-]?token'
+    window: 3
+    flags: i
+  - all_of:
+      - pattern: 'parseHash'
+      - regex: 'access[_-]?token'
+    window: 5
+    flags: i
+  - all_of:
+      - pattern: 'getHashParam'
+      - regex: 'access[_-]?token'
+    window: 5
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,26 +1,52 @@
 id: SAFE-T1401
-name: 'SAFE-T1401: Line Jumping'
-severity: high
-summary: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1401 **Severity**:
-  High **First Observed**: November 2024 (Observed in MCP implementations shortly
-  after protocol release) **Last Updated**: 2025-11-19'
-description: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1401
-  **Severity**: High **First Observed**: November 2024 (Observed in MCP implementations
-  shortly after protocol release) **Last Updated**: 2025-11-19'
-mitigations: []
+name: Line Jumping
+severity: P1
+summary: 'Newline or control character injection in tool descriptions to hide malicious instructions'
+description: 'Line Jumping injects newline characters, CRLF sequences, or control characters into
+  MCP tool descriptions, parameter names, or metadata fields. The injected characters push malicious
+  instructions outside the visible area of user interfaces, making them invisible during review
+  while still being processed by the LLM.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1401-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1401.signal.newline_injection
+  description: Detects newline and CRLF injection in tool metadata
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1401*'
-  - pattern: '*line*'
-  - pattern: '*jumping*'
-languages: []
+  - regex: '\\r\\n.*(?:SYSTEM|INSTRUCTION|OVERRIDE|IGNORE)'
+    flags: i
+  - regex: '\\n{5,}'
+  - regex: '\\r{3,}'
+  - pattern: '\r\n\r\n'
+  - regex: '(?:description|summary|name).*\\n.*\\n.*(?:instruction|system|override)'
+    flags: i
+- id: SAFE-T1401.signal.control_chars
+  description: Detects control character insertion for display manipulation
+  heuristics:
+  - pattern: '\x0b'
+  - pattern: '\x0c'
+  - pattern: '\x1b['
+  - regex: '\\u000[bBcCdDeE]'
+  - regex: '\\x1b\[\d+[A-Za-z]'
+  - pattern: '\x08'
+  - regex: '\\e\[\d'
+- id: SAFE-T1401.signal.vertical_padding
+  description: Detects excessive whitespace used to hide content below visible area
+  heuristics:
+  - regex: '\n\s*\n\s*\n\s*\n\s*\n'
+  - regex: '\\n\\s*\\n\\s*\\n\\s*\\n'
+  - regex: 'padding.*(?:100|200|500|1000).*(?:px|em|vh)'
+    flags: i
+  - regex: 'margin-top.*(?:100|200|500|1000).*(?:px|em|vh)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,25 +1,57 @@
 id: SAFE-T3001
-name: SAFE-T3001 - RAG Backdoor Attack
-severity: high
-summary: '**Tactics:** Initial Access, Defense Evasion, Exfiltration, Impact **Technique
-  ID:** SAFE-T3001 **Status:** Stable (v1.0) **First Observed:** February 2024 (PoisonedRAG)
-  [1][2] **Last Updated:** 2025-11-11 **Author:**…'
-description: '**Tactics:** Initial Access, Defense Evasion, Exfiltration, Impact **Technique
-  ID:** SAFE-T3001 **Status:** Stable (v1.0) **First Observed:** February 2024 (PoisonedRAG)
-  [1][2] **Last Updated:** 2025-11-11 **Author:**…'
-mitigations: []
+name: RAG Backdoor Attack
+severity: P0
+summary: 'Malicious documents injected into RAG knowledge bases to poison retrieval-augmented generation'
+description: 'RAG Backdoor Attack injects malicious documents into Retrieval-Augmented Generation
+  knowledge bases used by MCP servers. Poisoned documents contain hidden instructions, false
+  information, or trigger phrases that activate when retrieved, causing the LLM to produce
+  attacker-controlled outputs, leak data, or execute unauthorized actions.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T3001-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T3001.signal.document_injection
+  description: Detects document injection into RAG knowledge bases
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t3001*'
-  - pattern: '*backdoor*'
-languages: []
+  - regex: '(?:add|insert|upsert|upload).*(?:document|text|chunk).*(?:index|store|collection|knowledge)'
+    flags: i
+  - regex: '(?:vector|embedding).*(?:store|index|db).*(?:add|insert|upsert)'
+    flags: i
+  - regex: '(?:langchain|llama.index|chromadb|pinecone).*(?:add|insert|from_documents)'
+    flags: i
+  - regex: 'knowledge_base.*(?:add|update|insert|upload)'
+    flags: i
+- id: SAFE-T3001.signal.poisoned_documents
+  description: Detects poisoned content patterns in RAG documents
+  heuristics:
+  - pattern: 'SYSTEM:'
+  - pattern: 'Ignore previous instructions'
+  - pattern: 'ignore all prior'
+  - regex: '(?:always|must|never).*(?:include|exclude|reveal|hide).*(?:credential|secret|token|key)'
+    flags: i
+  - regex: '(?:override|bypass|disable).*(?:safety|security|filter|guard|restriction)'
+    flags: i
+  - regex: '(?:exfiltrate|send|transmit).*(?:to|via).*(?:http|url|endpoint|webhook)'
+    flags: i
+- id: SAFE-T3001.signal.retrieval_manipulation
+  description: Detects retrieval manipulation for guaranteed poisoned document access
+  heuristics:
+  - regex: '(?:similarity|relevance|score).*(?:boost|override|force|max)'
+    flags: i
+  - regex: 'metadata.*(?:priority.*high|weight.*\d{2,}|boost)'
+    flags: i
+  - regex: '(?:chunk|overlap|window).*(?:size|length).*(?:max|large|1000)'
+    flags: i
+  - pattern: 'force_retrieve'
+  - pattern: 'always_include'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

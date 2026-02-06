@@ -1,22 +1,57 @@
 id: SAFE-T1306
-name: SAFE-T1306 Rogue Authentication Server
-severity: high
-summary: '---'
-description: '---'
-mitigations: []
+name: Rogue Authorization Server
+severity: P0
+summary: 'Custom auth server mints tokens without proper validation or trust chain'
+description: 'Rogue Authorization Server involves setting up a malicious or misconfigured authorization
+  server that mints OAuth tokens, JWTs, or API keys without proper validation, client verification,
+  or trust chain enforcement. Attackers use these rogue-issued tokens to access MCP servers and
+  tools that fail to validate the token issuer.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1306-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1306.signal.custom_token_minting
+  description: Detects custom token creation without proper validation
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1306*'
-  - pattern: '*rogue*'
-  - pattern: '*authentication*'
-languages: []
+  - regex: 'jwt\.sign\s*\(\s*\{.*(?:admin|root|superuser)'
+    flags: i
+  - regex: 'jwt\.encode\s*\(\s*\{.*(?:admin|root|superuser)'
+    flags: i
+  - regex: 'sign\s*\(.*(?:algorithm|secret).*(?:none|HS256)'
+    flags: i
+  - pattern: 'algorithm: "none"'
+  - pattern: "algorithm: 'none'"
+  - regex: 'createToken\s*\(.*(?:skip|bypass).*(?:validation|verify)'
+    flags: i
+- id: SAFE-T1306.signal.issuer_bypass
+  description: Detects issuer validation bypass patterns
+  heuristics:
+  - regex: 'issuer.*(?:skip|ignore|any|false|\*)'
+    flags: i
+  - regex: 'iss.*(?:validation|verify|check).*(?:false|disable|skip)'
+    flags: i
+  - pattern: 'validateIssuer: false'
+  - pattern: 'verify_iss: False'
+  - pattern: 'skip_issuer_check'
+  - regex: 'trusted_issuers.*\*'
+- id: SAFE-T1306.signal.auth_server_setup
+  description: Detects patterns indicating rogue auth server setup
+  heuristics:
+  - regex: 'authorization_server.*(?:custom|local|mock|fake)'
+    flags: i
+  - regex: 'token_endpoint\s*[:=]\s*[''"]https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0)'
+  - regex: '\.well-known/openid-configuration.*(?:mock|fake|custom)'
+    flags: i
+  - pattern: 'self_signed: true'
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

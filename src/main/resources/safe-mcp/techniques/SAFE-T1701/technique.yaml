@@ -1,26 +1,54 @@
 id: SAFE-T1701
-name: 'SAFE-T1701: Cross-Tool Contamination'
-severity: high
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1701 **Severity**:
-  High **First Observed**: Not observed in production (Conceptual technique based
-  on MCP multi-tool orchestration patterns) **Last…'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) **Technique ID**: SAFE-T1701
-  **Severity**: High **First Observed**: Not observed in production (Conceptual technique
-  based on MCP multi-tool orchestration patterns) **Last…'
-mitigations: []
+name: Cross-Tool Contamination
+severity: P1
+summary: 'Shared state between tools enables data pollution and cross-tool attacks'
+description: 'Cross-Tool Contamination exploits shared state between MCP tools including global
+  variables, shared memory, common databases, or file-based caches. Malicious data written by
+  one tool pollutes the execution context of another, enabling data exfiltration, privilege
+  escalation, or behavior manipulation across tool boundaries.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1701-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1701.signal.shared_state
+  description: Detects shared mutable state between tool implementations
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1701*'
-  - pattern: '*cross*'
-  - pattern: '*contamination*'
-languages: []
+  - regex: 'global\s+\w+\s*='
+  - regex: 'globalThis\.\w+\s*='
+  - regex: 'window\.\w+\s*='
+  - regex: 'shared_state|shared_context|global_context'
+    flags: i
+  - pattern: 'module.exports.state'
+  - regex: 'class\s+.*State.*(?:singleton|instance)'
+    flags: i
+- id: SAFE-T1701.signal.cross_tool_data_flow
+  description: Detects data flow between tools without isolation
+  heuristics:
+  - regex: 'tool_output.*(?:input|param|arg).*(?:another|next|other).*tool'
+    flags: i
+  - regex: 'result.*(?:pass|forward|pipe).*(?:tool|function)'
+    flags: i
+  - regex: '(?:cache|store|db)\.(?:set|write|put).*(?:tool|function)'
+    flags: i
+  - pattern: 'tool_chain_state'
+  - pattern: 'inter_tool_data'
+- id: SAFE-T1701.signal.global_pollution
+  description: Detects global variable pollution patterns
+  heuristics:
+  - regex: 'process\.(?:env|global)\.\w+\s*='
+  - regex: 'Object\.assign\s*\(\s*(?:global|globalThis|window)'
+    flags: i
+  - regex: 'prototype\.\w+\s*='
+  - pattern: '__proto__'
+  - pattern: 'constructor.prototype'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
