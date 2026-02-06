@@ -1,33 +1,79 @@
 id: SAFE-T1911
-name: 'SAFE-T1911: Parameter Exfiltration'
-severity: high
-summary: |-
-  Parameter exfiltration when sensitive parameters are sent to external services that
-  are not required for the tool's function.
-description: |-
-  Tactic: Exfiltration (ATK-TA0010). Technique: SAFE-T1911. Severity: high.
-  Detection guidance:
-  - Require a concrete sensitive source (credentials, PII, internal data) and an
-    external sink (network call, log export, analytics) that is not necessary.
-  - User-supplied input sent to a required third-party API is not exfiltration.
-  - Identify the exact parameters being sent and the missing guard.
-  Exclusions:
-  - Do not flag standard API authentication headers or required service calls.
-  - Do not flag generic web fetches that do not transmit sensitive data.
-mitigations: []
+# NOTE: ID is outside the published SAFE-T1001-SAFE-T1408 range; pending catalog expansion.
+name: Parameter Exfiltration
+severity: P1
+summary: 'Secrets are embedded in unused JSON parameters or metadata fields to evade detection.'
+description: 'Attackers hide sensitive data inside optional or unused parameters (e.g., metadata, context, tags)
+  that are accepted and forwarded by the server but not actively validated. These values can be logged or
+  propagated to upstream services, enabling stealthy exfiltration without triggering obvious alarms.'
+mitigations:
+- SAFE-M-3
 code_signals:
-- id: SAFE-T1911-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1911.signal.permissive_schema
+  description: Detects permissive JSON schema configurations that accept arbitrary properties.
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1911*'
-  - pattern: '*parameter*'
-  - pattern: '*exfiltration*'
-languages: []
+  # JSON Schema permissive settings
+  - pattern: 'additionalProperties: true'
+  - pattern: 'additionalProperties":true'
+  - pattern: '"additionalProperties":true'
+  - pattern: 'additionalProperties: True'
+  # Pydantic/Python permissive settings
+  - pattern: 'extra = "allow"'
+  - pattern: "extra = 'allow'"
+  - pattern: 'allow_unknown'
+  - pattern: 'unknown_fields'
+  - pattern: 'Extra.allow'
+  - regex: 'model_config.*extra.*allow'
+    flags: i
+  # Zod permissive settings
+  - pattern: '.passthrough()'
+  - pattern: '.catchall('
+- id: SAFE-T1911.signal.catch_all_types
+  description: Detects catch-all type patterns that accept arbitrary data.
+  heuristics:
+  # Rust any-value types
+  - pattern: 'serde_json::Value'
+  - pattern: 'JsonValue'
+  # Go any-value types
+  - pattern: 'map[string]interface{}'
+  - pattern: 'map[string]any'
+  # TypeScript/JavaScript
+  - pattern: 'Record<string, unknown>'
+  - pattern: 'Record<string, any>'
+  - pattern: '[key: string]: any'
+  - pattern: '[key: string]: unknown'
+  # Python
+  - pattern: 'Dict[str, Any]'
+  - pattern: 'dict[str, Any]'
+- id: SAFE-T1911.signal.metadata_fields
+  description: Detects common metadata fields that could be abused for exfiltration.
+  heuristics:
+  # Common metadata field names
+  - pattern: '"metadata":'
+  - pattern: "'metadata':"
+  - pattern: '"context":'
+  - pattern: "'context':"
+  - pattern: '"tags":'
+  - pattern: "'tags':"
+  - pattern: '"extra":'
+  - pattern: "'extra':"
+  # Passthrough patterns
+  - regex: 'passthrough.*params'
+    flags: i
+  - regex: 'passthrough.*fields'
+    flags: i
+  - regex: 'arbitrary.*fields'
+    flags: i
+  - regex: 'unknown.*params'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

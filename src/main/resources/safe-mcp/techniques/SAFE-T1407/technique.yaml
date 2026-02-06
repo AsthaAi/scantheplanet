@@ -1,26 +1,81 @@
 id: SAFE-T1407
-name: 'SAFE-T1407: Server Proxy Masquerade'
-severity: medium
-summary: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1407 **Severity**:
-  High **First Observed**: Not observed in production (technique analysis based on
-  threat modeling) **Last Updated**: 2025-12-16'
-description: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1407
-  **Severity**: High **First Observed**: Not observed in production (technique analysis
-  based on threat modeling) **Last Updated**: 2025-12-16'
-mitigations: []
+name: Server Proxy Masquerade
+severity: P1
+summary: 'Malicious MCP server proxies a legitimate API to appear benign while inspecting or modifying traffic'
+description: 'An attacker operates an MCP server that forwards requests to a legitimate upstream API and relays the
+  responses back to the client. Because the responses originate from the trusted service, the traffic appears
+  normal in monitoring and logs, but the proxy can inspect, alter, or exfiltrate sensitive data. This enables
+  stealthy data collection and response manipulation while hiding the true malicious behavior.'
+mitigations:
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1407-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1407.signal.proxy_setup
+  description: Detects reverse-proxy or passthrough handler configuration
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1407*'
-  - pattern: '*proxy*'
-  - pattern: '*masquerade*'
-languages: []
+  # Nginx/config patterns
+  - pattern: 'proxy_pass'
+  - pattern: 'reverse_proxy'
+  # Go standard library
+  - pattern: 'NewSingleHostReverseProxy('
+  - pattern: 'httputil.NewSingleHostReverseProxy'
+  # Node.js http-proxy-middleware
+  - pattern: 'http-proxy-middleware'
+  - pattern: 'createProxyMiddleware('
+  # Node.js http-proxy
+  - pattern: 'httpProxy.createProxyServer'
+  - pattern: 'http-proxy'
+  - regex: 'httpProxy\.createServer\s*\('
+  - regex: 'createProxyMiddleware\s*\('
+- id: SAFE-T1407.signal.request_forwarding
+  description: Detects request piping and forwarding patterns
+  heuristics:
+  # Node.js request piping
+  - pattern: 'req.pipe('
+  - pattern: 'res.pipe('
+  - pattern: '.pipe(upstream'
+  - pattern: '.pipe(proxy'
+  # Forwarding patterns
+  - pattern: 'forwardRequest('
+  - pattern: 'forward_request('
+  - regex: 'req\.pipe\s*\('
+  - regex: 'res\.pipe\s*\('
+- id: SAFE-T1407.signal.traffic_interception
+  description: Detects patterns indicating traffic inspection or modification
+  heuristics:
+  # Interception function names
+  - pattern: 'interceptRequest('
+  - pattern: 'interceptResponse('
+  - pattern: 'modifyRequest('
+  - pattern: 'modifyResponse('
+  - pattern: 'onProxyReq'
+  - pattern: 'onProxyRes'
+  # Event handlers for proxy
+  - regex: 'on\s*\([''"]proxyReq[''"]'
+  - regex: 'on\s*\([''"]proxyRes[''"]'
+  # Interception with body/headers access
+  - pattern: 'proxyReq.setHeader'
+  - pattern: 'proxyRes.headers'
+- id: SAFE-T1407.signal.upstream_config
+  description: Detects upstream target configuration
+  heuristics:
+  # Configuration variable names
+  - pattern: 'upstream_url'
+  - pattern: 'upstreamUrl'
+  - pattern: 'proxyTarget'
+  - pattern: 'proxy_target'
+  - pattern: 'targetHost'
+  - pattern: 'target_host'
+  # Configuration patterns
+  - regex: 'target\s*[:=]\s*[''"]https?://'
+  - regex: 'upstream\s*[:=]\s*[''"]https?://'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,27 +1,70 @@
 id: SAFE-T1702
-name: 'SAFE-T1702: Shared-Memory Poisoning'
-severity: high
-summary: '**Tactic**: Lateral Movement (ATK-TA0008) / Data Manipulation (ATK-TA0040)
-  **Technique ID**: SAFE-T1702 **Severity**: High **First Observed**: 2024 **Last
-  Updated**: 2025-12-04 **Author**: Vikranth Kumar Shivaa'
-description: '**Tactic**: Lateral Movement (ATK-TA0008) / Data Manipulation (ATK-TA0040)
-  **Technique ID**: SAFE-T1702 **Severity**: High **First Observed**: 2024 **Last
-  Updated**: 2025-12-04 **Author**: Vikranth Kumar Shivaa'
-mitigations: []
+name: Command Injection
+severity: P0
+summary: 'Shell command injection through unsanitized user input in tool implementations'
+description: 'Command Injection vulnerabilities occur when MCP server tools execute shell commands with unsanitized user
+  input. Attackers can inject malicious commands that are executed with the server''s privileges, potentially leading
+  to arbitrary code execution, data exfiltration, or system compromise.
+
+
+  This technique targets common command execution patterns across multiple languages including Node.js (child_process),
+  Python (subprocess, os.system), Rust (Command), and Go (os/exec). Unsafe practices include string concatenation in
+  shell commands, missing input validation, and using shell=True or shell invocation modes.
+
+
+  Command injection is particularly dangerous in MCP servers because tools often have elevated privileges to interact
+  with system resources, files, or external services. A successful injection can bypass all security boundaries.'
+mitigations:
+- SAFE-M-6
+- SAFE-M-8
+- SAFE-M-12
+- SAFE-M-13
 code_signals:
-- id: SAFE-T1702-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1702.signal.node_exec
+  description: Detects unsafe child_process.exec and execSync usage in Node.js/TypeScript
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1702*'
-  - pattern: '*shared*'
-  - pattern: '*memory*'
-  - pattern: '*poisoning*'
-languages: []
+  - pattern_ref: js.child_process_exec
+- id: SAFE-T1702.signal.node_spawn_shell
+  description: Detects spawn with shell option enabled in Node.js/TypeScript
+  heuristics:
+  - pattern_ref: js.spawn_with_shell
+- id: SAFE-T1702.signal.python_os_system
+  description: Detects os.system and os.popen usage in Python
+  heuristics:
+  - pattern_ref: py.os_system
+- id: SAFE-T1702.signal.python_subprocess_shell
+  description: Detects subprocess calls with shell=True in Python
+  heuristics:
+  - pattern_ref: py.subprocess_shell
+- id: SAFE-T1702.signal.rust_command
+  description: Detects Command execution in Rust that may accept user input
+  heuristics:
+  - pattern_ref: rust.command_new
+  - pattern_ref: rust.command_with_args
+- id: SAFE-T1702.signal.go_exec
+  description: Detects exec.Command usage in Go
+  heuristics:
+  - pattern_ref: go.exec_command
+- id: SAFE-T1702.signal.shell_operators
+  description: Detects shell metacharacters and operators in command strings
+  heuristics:
+  - pattern_ref: common.shell_operators
+- id: SAFE-T1702.signal.string_interpolation
+  description: Detects string interpolation/concatenation in command construction
+  heuristics:
+  - pattern_ref: js.template_interpolation_command
+  - pattern_ref: py.fstring_interpolation_command
+  - pattern_ref: common.string_concat_command
+languages:
+- typescript
+- javascript
+- python
+- rust
+- go
 output_schema:
-  requires_mitigations: false
+  requires_mitigations: true
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

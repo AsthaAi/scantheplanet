@@ -1,30 +1,48 @@
 id: SAFE-T1102
-name: Prompt Injection Surface from Untrusted Content
-severity: medium
-summary: Untrusted external content is passed into LLM context without strong isolation.
-description: |
-  Detects when external content (web search, scraping, user input) is passed into
-  LLM prompts or context without adequate isolation or sanitization.
+name: Indirect Prompt Injection
+severity: P0
+summary: 'External data sources inject malicious instructions into LLM context'
+description: 'Indirect Prompt Injection occurs when external data (RAG documents, files, web content, database records)
+  contains hidden instructions that manipulate LLM behavior when processed as context. Unlike direct injection,
+  the attacker does not need direct access to the prompt - they poison data sources the application consumes.'
 mitigations:
-  - SAFE-M-0
+- SAFE-M-1
+- SAFE-M-5
+- SAFE-M-7
+- SAFE-M-8
 code_signals:
-  - id: SAFE-T1102.signal
-    description: External content flows into LLM prompt/context.
-    heuristics:
-      - pattern: "prompt"
-      - pattern: "context"
-      - pattern: "search result"
-      - pattern: "external content"
-      - pattern: "llm"
+- id: SAFE-T1102.signal.rag_injection
+  description: Detects RAG/vector store queries that may return poisoned content
+  heuristics:
+  - pattern_ref: common.rag_query_contextual
+- id: SAFE-T1102.signal.file_content
+  description: Detects file content that may contain injected instructions
+  heuristics:
+  - pattern_ref: common.file_read_contextual
+- id: SAFE-T1102.signal.web_content
+  description: Detects web content fetching that may return injected content
+  heuristics:
+  - pattern_ref: common.web_content_contextual
+- id: SAFE-T1102.signal.database_content
+  description: Detects database queries that may return poisoned records
+  heuristics:
+  - pattern_ref: common.db_query_contextual_extended
+- id: SAFE-T1102.signal.prompt_concat
+  description: Detects concatenation of content into prompts
+  heuristics:
+  - pattern_ref: common.prompt_concat
+- id: SAFE-T1102.signal.tool_response
+  description: Detects MCP tool responses used in context
+  heuristics:
+  - pattern_ref: common.tool_response_contextual
 languages:
-  - python
-  - javascript
-  - typescript
-  - java
-  - kotlin
+- typescript
+- javascript
+- python
 output_schema:
-  requires_mitigations: false
+  requires_mitigations: true
   allowed_status_values:
-    - pass
-    - fail
-    - unknown
+  - pass
+  - fail
+  - partial
+  - unknown

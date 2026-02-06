@@ -1,30 +1,47 @@
 id: SAFE-T1101
-name: 'SAFE-T1101: Command Injection'
-severity: high
-summary: '**Tactic**: Execution (ATK-TA0002), Initial Access (ATK-TA0001)'
-description: '**Tactic**: Execution (ATK-TA0002), Initial Access (ATK-TA0001). Command injection occurs when untrusted input is used to build or invoke system commands (shell, exec, subprocess, ProcessBuilder, Runtime.exec, etc.). This technique is about OS command execution, not network SSRF or untrusted URL fetches. Findings should require evidence of user/attacker-controlled input reaching a command invocation without proper validation or safe argument handling.'
-mitigations: []
+name: Prompt Injection via Tool Output
+severity: P0
+summary: 'Tool outputs containing external data can hijack LLM behavior'
+description: 'Prompt Injection via Tool Output occurs when MCP tools return user-controlled or external data directly to the
+  LLM without proper sanitization, allowing malicious content in tool outputs to hijack the agent behavior. Tool outputs
+  are typically trusted by LLMs and processed as authoritative information.
+
+  Common attack vectors include: database records with hidden instructions, file contents with prompt injection payloads,
+  API responses crafted to override directives, and web scraping results with malicious instruction sequences.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-5
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1101-signal-1
-  description: Indicators of untrusted input reaching command execution APIs or shell invocation.
+- id: SAFE-T1101.signal.direct_return_fetch
+  description: Detects direct return of fetched/external data
   heuristics:
-  - pattern: '*os.system*'
-  - pattern: '*subprocess*'
-  - pattern: '*shell*'
-  - pattern: '*Runtime.getRuntime().exec*'
-  - pattern: '*ProcessBuilder*'
-  - pattern: '*exec(*'
-  - pattern: '*cmd*'
-  - pattern: '*bash*'
-  - pattern: '*sh -c*'
-  - pattern: '*powershell*'
-  - pattern: '*command*'
-  - pattern: '*injection*'
-languages: []
+  - pattern_ref: common.http_direct_return
+- id: SAFE-T1101.signal.direct_return_db
+  description: Detects direct return of database query results
+  heuristics:
+  - pattern_ref: common.db_query_direct
+  - pattern_ref: py.cursor_fetch_direct
+- id: SAFE-T1101.signal.direct_return_file
+  description: Detects direct return of file contents
+  heuristics:
+  - pattern_ref: common.file_read_direct
+- id: SAFE-T1101.signal.web_scraping
+  description: Detects web scraping content returned directly
+  heuristics:
+  - pattern_ref: common.web_scraping_direct
+- id: SAFE-T1101.signal.json_parse_external
+  description: Detects JSON parsing of external data
+  heuristics:
+  - pattern_ref: common.json_parse_external
+languages:
+- typescript
+- javascript
+- python
 output_schema:
-  requires_mitigations: false
+  requires_mitigations: true
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

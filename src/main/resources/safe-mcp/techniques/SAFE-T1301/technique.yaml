@@ -1,26 +1,72 @@
 id: SAFE-T1301
-name: 'SAFE-T1301: Cross-Server Tool Shadowing'
-severity: high
-summary: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1301
-  **Severity**: High **First Observed**: March 2024 (Theoretical research on MCP multi-server
-  environments) **Last Updated**: 2025-01-15'
-description: '**Tactic**: Privilege Escalation (ATK-TA0004) **Technique ID**: SAFE-T1301
-  **Severity**: High **First Observed**: March 2024 (Theoretical research on MCP multi-server
-  environments) **Last Updated**: 2025-01-15'
-mitigations: []
+name: Cross-Server Tool Shadowing
+severity: P1
+summary: 'Malicious MCP servers override legitimate tool calls by registering conflicting tool names'
+description: 'Cross-Server Tool Shadowing is a privilege escalation technique where malicious MCP servers override or intercept
+  legitimate tool calls from other servers. This attack exploits multi-server MCP environments where multiple servers
+  can provide tools with the same or similar names, allowing attackers to shadow legitimate functionality with
+  malicious implementations.'
+mitigations:
+- SAFE-M-2
 code_signals:
-- id: SAFE-T1301-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1301.signal.multi_server
+  description: Detects multi-server MCP configurations
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1301*'
-  - pattern: '*cross*'
-  - pattern: '*shadowing*'
-languages: []
+  - pattern: 'mcpServers'
+  - pattern: 'mcp_servers'
+  - pattern: 'addMcpServer('
+  - pattern: 'connectMcpServer('
+  - regex: 'mcpServers\s*[:=]\s*\['
+  - regex: 'mcp.{0,15}server'
+  - regex: 'server.{0,15}mcp'
+    flags: i
+- id: SAFE-T1301.signal.tool_conflict
+  description: Detects tool name collision or conflict handling
+  heuristics:
+  - pattern: 'toolConflict'
+  - pattern: 'tool_conflict'
+  - pattern: 'duplicateTool'
+  - pattern: 'duplicate_tool'
+  - pattern: 'nameCollision'
+  - pattern: 'name_collision'
+  - pattern: 'overrideTool'
+  - pattern: 'override_tool'
+  - regex: 'tool.{0,10}conflict'
+    flags: i
+  - regex: 'duplicate.{0,10}tool'
+    flags: i
+- id: SAFE-T1301.signal.tool_priority
+  description: Detects tool priority or resolution mechanisms
+  heuristics:
+  - pattern: 'toolPriority'
+  - pattern: 'tool_priority'
+  - pattern: 'serverPriority'
+  - pattern: 'server_priority'
+  - pattern: 'resolutionOrder'
+  - pattern: 'resolution_order'
+  - pattern: 'preferServer'
+  - pattern: 'prefer_server'
+  - regex: 'priority.{0,10}(tool|server)'
+    flags: i
+- id: SAFE-T1301.signal.tool_merge
+  description: Detects tool merging from multiple sources
+  heuristics:
+  - pattern: 'mergeTools'
+  - pattern: 'merge_tools'
+  - pattern: 'aggregateTools'
+  - pattern: 'aggregate_tools'
+  - pattern: 'combineTools'
+  - pattern: 'combine_tools'
+  - regex: '(merge|combine|aggregate).{0,10}tools'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

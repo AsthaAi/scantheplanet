@@ -1,26 +1,63 @@
 id: SAFE-T1205
-name: 'SAFE-T1205: Persistent Tool Redefinition'
-severity: high
-summary: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1205 **Severity**:
-  High **First Observed**: Not observed in production (technique analysis based on
-  threat modeling) **Last Updated**: 2025-12-16'
-description: '**Tactic**: Persistence (ATK-TA0003) **Technique ID**: SAFE-T1205 **Severity**:
-  High **First Observed**: Not observed in production (technique analysis based on
-  threat modeling) **Last Updated**: 2025-12-16'
-mitigations: []
+name: Persistent Tool Redefinition
+severity: P1
+summary: 'Attackers persist malicious tool definitions to disk or database to survive restarts'
+description: 'Persistent Tool Redefinition is a privilege escalation technique where attackers modify an MCP server''s
+  tool metadata or configuration to embed hidden commands that survive server restarts. By persisting malicious
+  tool definitions to disk, database, or configuration files, the attacker ensures their modifications remain
+  active even after the server is restarted or redeployed.'
+mitigations:
+- SAFE-M-2
 code_signals:
-- id: SAFE-T1205-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1205.signal.tool_file_write
+  description: Detects writing tool definitions to files
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1205*'
-  - pattern: '*persistent*'
-  - pattern: '*redefinition*'
-languages: []
+  # File write patterns with tool-related paths
+  - pattern: 'tools.json'
+  - pattern: 'tool_manifest'
+  - pattern: 'tool_definitions'
+  - pattern: 'tool_registry'
+  - regex: 'write(?:File|FileSync|_text)\s*\([^)]*(tool|manifest|registry|definitions)'
+    flags: i
+- id: SAFE-T1205.signal.tool_db_persist
+  description: Detects persisting tool definitions to database
+  heuristics:
+  - pattern: 'db.tools.insert'
+  - pattern: 'db.tools.update'
+  - pattern: 'collection("tools")'
+  - pattern: "collection('tools')"
+  - regex: 'INSERT INTO.{0,20}tools'
+    flags: i
+  - regex: 'UPDATE.{0,20}tools'
+    flags: i
+- id: SAFE-T1205.signal.dynamic_tool_load
+  description: Detects dynamic loading of tool definitions at startup
+  heuristics:
+  - pattern: 'loadToolsFrom'
+  - pattern: 'loadToolsFromConfig'
+  - pattern: 'registerToolsFromConfig'
+  - pattern: 'initializeTools'
+  - pattern: 'bootstrapTools'
+  - regex: 'load.{0,10}tools.{0,10}(from|config)'
+    flags: i
+  - regex: 'register.{0,10}tools.{0,10}startup'
+    flags: i
+- id: SAFE-T1205.signal.tool_env_config
+  description: Detects tool configuration from environment variables
+  heuristics:
+  - pattern: 'process.env.TOOL_'
+  - pattern: 'os.environ["TOOL_'
+  - pattern: "os.environ['TOOL_"
+  - pattern: 'getenv("TOOL_'
+  - pattern: "getenv('TOOL_"
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
