@@ -1,26 +1,56 @@
 id: SAFE-T1803
-name: SAFE-T1803 — Database Dump
-severity: critical
-summary: '**Tactics:** Collection, Exfiltration **Technique ID:** SAFE-T1803 **Status:**
-  Stable (v1.0) **First Observed:** Early 2000s (bulk database breach and SQL-based
-  data exfiltration campaigns) [1][2][7] **Last Updated:**…'
-description: '**Tactics:** Collection, Exfiltration **Technique ID:** SAFE-T1803 **Status:**
-  Stable (v1.0) **First Observed:** Early 2000s (bulk database breach and SQL-based
-  data exfiltration campaigns) [1][2][7] **Last Updated:**…'
-mitigations: []
+name: Database Dump
+severity: P0
+summary: 'Bulk database export via SELECT *, mysqldump, pg_dump, or similar tools'
+description: 'Database Dump extracts entire database contents through MCP tools using bulk export
+  commands like mysqldump, pg_dump, SELECT *, or ORM findAll without pagination. This enables
+  mass exfiltration of structured data including user records, credentials, financial data,
+  and other sensitive information stored in databases.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1803-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1803.signal.dump_commands
+  description: Detects database dump command usage
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1803*'
-  - pattern: '*database*'
-  - pattern: '*dump*'
-languages: []
+  - pattern: 'mysqldump'
+  - pattern: 'pg_dump'
+  - pattern: 'mongodump'
+  - pattern: 'sqlite3 .dump'
+  - regex: 'redis-cli.*(?:dump|save|bgsave)'
+    flags: i
+  - regex: 'COPY\s+\w+\s+TO\s'
+    flags: i
+- id: SAFE-T1803.signal.bulk_queries
+  description: Detects bulk data extraction queries
+  heuristics:
+  - regex: 'SELECT\s+\*\s+FROM\s+\w+\s*(?:;|$)'
+    flags: i
+  - regex: '\.findAll\s*\(\s*\)'
+  - regex: '\.find\s*\(\s*\{\s*\}\s*\)'
+  - regex: 'collection\.find\s*\(\s*\)'
+  - regex: 'Model\.objects\.all\s*\(\s*\)'
+  - regex: 'SELECT.*(?:WITHOUT|NO)\s+LIMIT'
+    flags: i
+- id: SAFE-T1803.signal.export_operations
+  description: Detects database export to file operations
+  heuristics:
+  - regex: '(?:INTO|TO)\s+(?:OUTFILE|DUMPFILE)\s'
+    flags: i
+  - regex: 'cursor\.(?:fetchall|fetchmany)\s*\(\s*\)'
+  - regex: 'to_csv|to_json|to_parquet'
+    flags: i
+  - regex: '(?:export|backup).*(?:database|table|collection)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

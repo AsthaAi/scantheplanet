@@ -1,25 +1,56 @@
 id: SAFE-T1910
-name: 'SAFE-T1910: Covert Channel Exfiltration'
-severity: high
-summary: '**Tactic**: Exfiltration (ATK-TA0010) **Technique ID**: SAFE-T1910 **Severity**:
-  High **First Observed**: 2025 **Last Updated**: 2025-12-03'
-description: '**Tactic**: Exfiltration (ATK-TA0010) **Technique ID**: SAFE-T1910 **Severity**:
-  High **First Observed**: 2025 **Last Updated**: 2025-12-03'
-mitigations: []
+name: Covert Channel Exfiltration
+severity: P1
+summary: 'Data exfiltrated through DNS tunneling, timing channels, or steganographic encoding'
+description: 'Covert Channel Exfiltration uses non-standard communication channels to exfiltrate
+  data from MCP server environments. Techniques include DNS tunneling (encoding data in DNS
+  queries), timing-based channels, HTTP header manipulation, and steganographic encoding that
+  bypasses traditional network monitoring and DLP solutions.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1910-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1910.signal.dns_tunneling
+  description: Detects DNS tunneling patterns for data exfiltration
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1910*'
-  - pattern: '*covert*'
-  - pattern: '*channel*'
-  - pattern: '*exfiltration*'
-languages: []
+  - regex: 'dns\.resolve.*(?:TXT|CNAME|MX)'
+    flags: i
+  - regex: '(?:encode|hex|base32|base64).*(?:dns|subdomain|domain)'
+    flags: i
+  - regex: '(?:data|payload|secret).*(?:\.|\+).*(?:domain|dns)'
+    flags: i
+  - regex: 'dns\.lookup.*(?:encode|hex|base)'
+    flags: i
+  - pattern: 'dnsExfil'
+  - pattern: 'dns_tunnel'
+- id: SAFE-T1910.signal.timing_channel
+  description: Detects timing-based covert channel patterns
+  heuristics:
+  - regex: 'setTimeout.*(?:bit|byte|data|char)'
+    flags: i
+  - regex: 'sleep\s*\(\s*(?:bit|byte|data|char)'
+    flags: i
+  - regex: '(?:delay|interval|timing).*(?:encode|signal|transmit)'
+    flags: i
+  - regex: '(?:performance|Date)\.now\s*\(\s*\).*(?:diff|delta|measure)'
+- id: SAFE-T1910.signal.header_exfil
+  description: Detects data exfiltration through HTTP headers or metadata
+  heuristics:
+  - regex: 'headers\[.*\]\s*=.*(?:encode|secret|data|exfil)'
+    flags: i
+  - regex: '(?:X-Custom|X-Data|X-Payload).*(?:header|set)'
+    flags: i
+  - regex: 'User-Agent.*(?:encode|base64|hex)'
+    flags: i
+  - regex: 'cookie.*(?:encode|exfil|data|secret)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

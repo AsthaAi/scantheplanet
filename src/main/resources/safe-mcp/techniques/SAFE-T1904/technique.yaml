@@ -1,27 +1,51 @@
 id: SAFE-T1904
-name: 'SAFE-T1904: Chat-Based Backchannel'
-severity: high
-summary: '**Tactic**: Command and Control (ATK-TA0011) **Technique ID**: SAFE-T1904
-  **Severity**: High **First Observed**: Not observed in production (documented as
-  theoretical but practically feasible pattern) **Last Updated**:…'
-description: '**Tactic**: Command and Control (ATK-TA0011) **Technique ID**: SAFE-T1904
-  **Severity**: High **First Observed**: Not observed in production (documented as
-  theoretical but practically feasible pattern) **Last Updated**:…'
-mitigations: []
+name: Chat-Based Backchannel
+severity: P1
+summary: 'Encoded commands or data hidden in chat messages for covert communication'
+description: 'Chat-Based Backchannel uses MCP chat or messaging tools as a covert communication
+  channel. Attackers embed encoded commands, base64 payloads, or steganographic data within
+  seemingly normal chat messages to exfiltrate data or receive C2 instructions without triggering
+  network-based detection.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1904-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1904.signal.encoded_chat
+  description: Detects encoded payloads in chat messages
   heuristics:
-  - pattern: '```backchannel'
-  - pattern: 'BACKCHANNEL:'
-  - pattern: 'X-CTRL:'
-  - pattern: == backchannel ==
-  - pattern: YmFzaCAtYyAnY3VybCAtcyBodHRw
-languages: []
+  - regex: 'message.*(?:base64|btoa|atob|b64encode|b64decode)'
+    flags: i
+  - regex: 'chat.*(?:encode|decode|encrypt|decrypt)'
+    flags: i
+  - regex: 'send.*message.*(?:Buffer\.from|base64)'
+    flags: i
+  - regex: '(?:encode|encrypt).*(?:send|post|message|chat)'
+    flags: i
+- id: SAFE-T1904.signal.hidden_commands
+  description: Detects command-and-control patterns in chat
+  heuristics:
+  - regex: 'message.*(?:startsWith|match|test)\s*\(.*(?:cmd|exec|run|shell)'
+    flags: i
+  - regex: 'if.*message.*(?:===|==|\.match).*(?:prefix|trigger|command)'
+    flags: i
+  - regex: '(?:parse|extract).*(?:command|instruction).*(?:message|chat)'
+    flags: i
+- id: SAFE-T1904.signal.data_in_messages
+  description: Detects data exfiltration through chat messages
+  heuristics:
+  - regex: 'send.*(?:message|chat).*(?:readFile|readdir|env|credential|token)'
+    flags: i
+  - regex: '(?:file|data|secret).*(?:split|chunk).*(?:send|message)'
+    flags: i
+  - regex: 'message.*(?:JSON\.stringify|serialize|marshal).*(?:data|secret|file)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,27 +1,54 @@
 id: SAFE-T2102
-name: 'SAFE-T2102: Service Disruption via External API Flooding'
-severity: critical
-summary: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2102 **Severity**:
-  High **First Observed**: Not publicly reported in MCP production deployments (as
-  of 2025‑11‑09). Related real‑world analogs exist (e.g., ChatGPT…'
-description: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2102 **Severity**:
-  High **First Observed**: Not publicly reported in MCP production deployments (as
-  of 2025‑11‑09). Related real‑world analogs exist (e.g., ChatGPT…'
-mitigations: []
+name: Service Disruption via API Flooding
+severity: P1
+summary: 'Infinite loops or unbounded requests to external APIs cause denial of service'
+description: 'Service Disruption via API Flooding uses MCP tools to generate excessive outbound API
+  calls through infinite loops, missing rate limits, or unbounded concurrent requests. This causes
+  denial of service on target APIs, excessive billing on cloud services, and potential cascading
+  failures across dependent systems.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T2102-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2102.signal.unbounded_api_calls
+  description: Detects unbounded API call loops
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t2102*'
-  - pattern: '*service*'
-  - pattern: '*disruption*'
-  - pattern: '*external*'
-languages: []
+  - regex: 'while\s*\(\s*true\s*\).*(?:fetch|request|axios|http)'
+    flags: i
+  - regex: 'for\s*\(\s*;\s*;\s*\).*(?:fetch|request|call|invoke)'
+    flags: i
+  - regex: 'setInterval.*(?:fetch|request|api|call)'
+    flags: i
+  - regex: '(?:recursive|recurse).*(?:api|request|fetch|call)'
+    flags: i
+- id: SAFE-T2102.signal.missing_rate_limit
+  description: Detects missing rate limiting on outbound requests
+  heuristics:
+  - regex: 'rate.*limit.*(?:false|0|disable|none|skip)'
+    flags: i
+  - regex: 'throttle.*(?:false|0|disable|none)'
+    flags: i
+  - regex: 'concurrent.*(?:unlimited|Infinity|MAX|10000)'
+    flags: i
+  - regex: 'Promise\.all\s*\(.*map.*(?:fetch|request)'
+    flags: i
+- id: SAFE-T2102.signal.flood_patterns
+  description: Detects API flood and amplification patterns
+  heuristics:
+  - regex: 'for\s*\(.*(?:1000|10000|100000).*(?:fetch|request|post)'
+    flags: i
+  - regex: '(?:batch|bulk|mass).*(?:request|call|invoke).*(?:without|no).*(?:limit|throttle)'
+    flags: i
+  - regex: 'Array\s*\(\s*(?:\d{4,})\s*\).*(?:fill|map).*(?:fetch|request)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

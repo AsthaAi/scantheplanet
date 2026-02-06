@@ -1,24 +1,54 @@
 id: SAFE-T1804
-name: 'SAFE-T1804: API Data Harvest'
-severity: critical
-summary: '**Tactic**: Collection (ATK-TA0009) **Technique ID**: SAFE-T1804 **Severity**:
-  High **First Observed**: 2024 (MCP ecosystem deployments) **Last Updated**: 2025-12-06'
-description: '**Tactic**: Collection (ATK-TA0009) **Technique ID**: SAFE-T1804 **Severity**:
-  High **First Observed**: 2024 (MCP ecosystem deployments) **Last Updated**: 2025-12-06'
-mitigations: []
+name: API Data Harvest
+severity: P1
+summary: 'Systematic API abuse through pagination, bulk endpoints, and rate limit bypass'
+description: 'API Data Harvest systematically extracts data through MCP tool API calls by abusing
+  pagination, accessing bulk endpoints, or bypassing rate limits. Attackers iterate through API
+  pages, manipulate query parameters, or use concurrent requests to extract large datasets that
+  individual queries would not expose.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1804-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1804.signal.pagination_abuse
+  description: Detects API pagination abuse patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1804*'
-  - pattern: '*data*'
-  - pattern: '*harvest*'
-languages: []
+  - regex: 'while.*(?:next_page|next_url|has_more|cursor|nextToken)'
+    flags: i
+  - regex: 'page\s*(?:\+\+|+=\s*1|=\s*page\s*\+)'
+  - regex: 'offset\s*(?:\+\+|+=)'
+  - regex: 'per_page\s*[:=]\s*(?:100|500|1000|max)'
+    flags: i
+  - regex: 'limit\s*[:=]\s*(?:1000|5000|10000|max|MAX)'
+- id: SAFE-T1804.signal.rate_limit_bypass
+  description: Detects rate limit evasion techniques
+  heuristics:
+  - regex: 'rate.*limit.*(?:bypass|evade|skip|disable|ignore)'
+    flags: i
+  - regex: 'retry.*after.*(?:0|ignore|skip)'
+    flags: i
+  - regex: 'X-RateLimit.*(?:ignore|bypass|spoof)'
+    flags: i
+  - regex: '(?:concurrent|parallel).*(?:request|fetch|call)'
+    flags: i
+  - pattern: 'rotate_api_key'
+  - pattern: 'rotate_token'
+- id: SAFE-T1804.signal.bulk_endpoint
+  description: Detects bulk API endpoint access
+  heuristics:
+  - regex: '/api/.*(?:bulk|batch|export|dump|all)'
+    flags: i
+  - regex: '(?:graphql|gql).*(?:query|mutation).*(?:all|every|findMany)'
+    flags: i
+  - regex: 'fields\s*[:=]\s*[''"]?\*'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

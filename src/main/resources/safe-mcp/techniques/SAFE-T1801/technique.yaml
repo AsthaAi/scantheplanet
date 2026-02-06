@@ -1,27 +1,56 @@
 id: SAFE-T1801
-name: 'SAFE-T1801: Automated Data Harvesting'
-severity: high
-summary: '**Tactic**: Collection (ATK-TA0009) **Technique ID**: SAFE-T1801 **Severity**:
-  High **First Observed**: April 2025 (Documented in peer-reviewed academic research
-  successfully demonstrating systematic credential theft…'
-description: '**Tactic**: Collection (ATK-TA0009) **Technique ID**: SAFE-T1801 **Severity**:
-  High **First Observed**: April 2025 (Documented in peer-reviewed academic research
-  successfully demonstrating systematic credential theft…'
-mitigations: []
+name: Automated Data Harvesting
+severity: P1
+summary: 'Bulk data access patterns systematically enumerate and collect records'
+description: 'Automated Data Harvesting uses MCP tools to systematically access and collect data
+  through bulk queries, pagination scraping, and record enumeration. Attackers automate data
+  collection across multiple endpoints or database tables to amass sensitive information for
+  exfiltration or analysis.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1801-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1801.signal.bulk_access
+  description: Detects bulk data access and pagination scraping patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1801*'
-  - pattern: '*automated*'
-  - pattern: '*data*'
-  - pattern: '*harvesting*'
-languages: []
+  - regex: 'while.*(?:next_page|hasMore|cursor|offset|page)'
+    flags: i
+  - regex: 'for\s.*(?:page|offset|cursor).*(?:fetch|request|query)'
+    flags: i
+  - regex: 'paginate\s*\(.*(?:all|unlimited|max)'
+    flags: i
+  - regex: 'LIMIT\s+(?:\d{4,}|ALL)'
+    flags: i
+  - regex: 'SELECT\s+\*\s+FROM'
+    flags: i
+- id: SAFE-T1801.signal.systematic_enumeration
+  description: Detects systematic record enumeration
+  heuristics:
+  - regex: 'for\s.*(?:id|record|row|item)\s+in\s+range'
+    flags: i
+  - regex: 'enumerate.*(?:users|records|accounts|entries)'
+    flags: i
+  - regex: '(?:scrape|crawl|harvest|collect).*(?:all|every|each)'
+    flags: i
+  - regex: 'batch_size\s*[:=]\s*(?:\d{4,}|MAX|Infinity)'
+    flags: i
+- id: SAFE-T1801.signal.data_accumulation
+  description: Detects data accumulation into collections for export
+  heuristics:
+  - regex: '(?:results|data|records)\.(?:push|append|extend|concat)\s*\('
+    flags: i
+  - regex: '(?:all_data|collected|harvested).*(?:append|push|add|extend)'
+    flags: i
+  - regex: 'writeFile.*(?:dump|export|collected|harvested)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

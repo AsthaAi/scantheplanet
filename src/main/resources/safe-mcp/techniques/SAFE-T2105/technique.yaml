@@ -1,26 +1,52 @@
 id: SAFE-T2105
-name: 'SAFE-T2105: Disinformation Output'
-severity: high
-summary: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2105 **Severity**:
-  High **First Observed**: March 2023 (Early LLM deployment incidents) **Last Updated**:
-  2025-11-08'
-description: '**Tactic**: Impact (ATK-TA0040) **Technique ID**: SAFE-T2105 **Severity**:
-  High **First Observed**: March 2023 (Early LLM deployment incidents) **Last Updated**:
-  2025-11-08'
-mitigations: []
+name: Disinformation Output
+severity: P1
+summary: 'LLM output manipulated to produce false, misleading, or harmful information'
+description: 'Disinformation Output manipulates MCP tool responses or LLM outputs to generate false,
+  misleading, or harmful information. Attackers inject instructions that cause the AI to produce
+  fabricated data, distorted facts, or biased responses that appear authoritative, potentially
+  causing real-world harm through decision-making based on false information.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T2105-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2105.signal.output_manipulation
+  description: Detects patterns indicating LLM output manipulation
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t2105*'
-  - pattern: '*disinformation*'
-  - pattern: '*output*'
-languages: []
+  - regex: '(?:override|replace|inject).*(?:response|output|answer|reply)'
+    flags: i
+  - regex: '(?:system|prompt).*(?:always|must|never).*(?:say|respond|answer|claim)'
+    flags: i
+  - regex: '(?:fabricate|hallucinate|invent|make.up).*(?:data|fact|information)'
+    flags: i
+  - pattern: 'force_response'
+  - pattern: 'override_output'
+- id: SAFE-T2105.signal.truth_distortion
+  description: Detects truth-distortion injection patterns
+  heuristics:
+  - regex: '(?:always|never).*(?:true|false|correct|incorrect).*(?:regardless|despite|even.if)'
+    flags: i
+  - regex: '(?:deny|contradict|dispute).*(?:fact|truth|evidence|data)'
+    flags: i
+  - regex: '(?:pretend|act.as.if|assume).*(?:true|real|fact|correct)'
+    flags: i
+- id: SAFE-T2105.signal.bias_injection
+  description: Detects bias injection into AI responses
+  heuristics:
+  - regex: '(?:always|only).*(?:recommend|suggest|promote|endorse)'
+    flags: i
+  - regex: '(?:never|avoid|exclude).*(?:mention|recommend|suggest|discuss)'
+    flags: i
+  - regex: '(?:bias|favor|prefer|prioritize).*(?:product|brand|company|service)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

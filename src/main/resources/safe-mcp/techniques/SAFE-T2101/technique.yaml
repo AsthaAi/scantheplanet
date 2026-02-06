@@ -1,26 +1,58 @@
 id: SAFE-T2101
-name: SAFE-T2101 — Data Destruction
-severity: critical
-summary: '**Tactics:** Impact, Defense Evasion **Technique ID:** SAFE-T2101 **Status:**
-  Stable (v1.0) **First Observed:** 2012 (Shamoon-style destructive wipers) [1][2][7]
-  **Last Updated:** 2025-11-15 **Author:** Pratikshya Regmi'
-description: '**Tactics:** Impact, Defense Evasion **Technique ID:** SAFE-T2101 **Status:**
-  Stable (v1.0) **First Observed:** 2012 (Shamoon-style destructive wipers) [1][2][7]
-  **Last Updated:** 2025-11-15 **Author:** Pratikshya Regmi'
-mitigations: []
+name: Data Destruction
+severity: P0
+summary: 'Destructive operations like rm -rf, DROP TABLE, or bulk file deletion'
+description: 'Data Destruction uses MCP tools to permanently delete or corrupt data through destructive
+  operations such as rm -rf, DROP TABLE, file wiping, bulk delete API calls, or database truncation.
+  Attackers may destroy data for sabotage, to cover their tracks, or as part of a ransomware attack.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T2101-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T2101.signal.filesystem_destruction
+  description: Detects destructive filesystem operations
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t2101*'
-  - pattern: '*data*'
-  - pattern: '*destruction*'
-languages: []
+  - regex: 'rm\s+-rf\s'
+  - regex: 'rmdir.*(?:recursive|force)'
+    flags: i
+  - regex: 'fs\.rm(?:Sync)?\s*\(.*(?:recursive|force)'
+    flags: i
+  - regex: 'shutil\.rmtree\s*\('
+  - regex: 'os\.remove.*(?:for|glob|walk)'
+    flags: i
+  - pattern: 'del /s /q'
+  - regex: 'unlink.*(?:recursive|glob|pattern)'
+    flags: i
+- id: SAFE-T2101.signal.database_destruction
+  description: Detects destructive database operations
+  heuristics:
+  - regex: 'DROP\s+(?:TABLE|DATABASE|SCHEMA|INDEX)'
+    flags: i
+  - regex: 'TRUNCATE\s+TABLE'
+    flags: i
+  - regex: 'DELETE\s+FROM\s+\w+\s*(?:;|$)'
+    flags: i
+  - regex: 'db\.(?:dropDatabase|dropCollection)\s*\('
+  - regex: '\.destroy\s*\(\s*\{.*where.*\{\s*\}\s*\}\s*\)'
+- id: SAFE-T2101.signal.wipe_patterns
+  description: Detects data wiping and overwrite patterns
+  heuristics:
+  - regex: '(?:wipe|shred|secure_delete|srm)\s'
+    flags: i
+  - regex: 'dd\s+if=/dev/(?:zero|urandom)'
+  - regex: 'cipher\s+/w:'
+  - regex: '(?:overwrite|zero_fill|wipe).*(?:disk|file|partition)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
