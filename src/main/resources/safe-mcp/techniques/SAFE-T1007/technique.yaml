@@ -1,26 +1,50 @@
 id: SAFE-T1007
-name: 'SAFE-T1007: OAuth Authorization Phishing'
-severity: high
-summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1007 **Severity**:
-  Critical **First Observed**: May 2025 (Reported by Alibaba Cloud Security Team)
-  **Last Updated**: 2025-01-06'
-description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1007
-  **Severity**: Critical **First Observed**: May 2025 (Reported by Alibaba Cloud Security
-  Team) **Last Updated**: 2025-01-06'
-mitigations: []
+name: OAuth Authorization Phishing
+severity: P0
+summary: 'Phishing attacks abuse OAuth flows to steal authorization codes or tokens'
+description: 'OAuth Authorization Phishing exploits the OAuth authorization flow to trick users into granting
+  permissions to attacker-controlled applications. The attacker creates a convincing authorization page
+  or redirects users through legitimate OAuth providers but captures the authorization code or tokens.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1007-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1007.signal.open_redirect
+  description: Detects open redirect vulnerabilities in OAuth flows
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1007*'
-  - pattern: '*authorization*'
-  - pattern: '*phishing*'
-languages: []
+  - regex: 'redirect_uri\s*[:=]\s*(?:req\.|request\.|params\.|query\.)'
+    flags: i
+  - regex: 'callback_url\s*[:=]\s*(?:req\.|request\.|params\.|query\.)'
+    flags: i
+  - pattern: 'redirect_uri_validation: false'
+  - pattern: 'validateRedirectUri: false'
+  - pattern: 'skip_redirect_validation'
+- id: SAFE-T1007.signal.state_bypass
+  description: Detects missing or bypassed OAuth state parameter (CSRF protection)
+  heuristics:
+  - pattern: 'skipStateValidation'
+  - pattern: 'skip_state_check'
+  - regex: 'state\s*[:=]\s*(?:null|undefined|None|"")'
+    flags: i
+  - regex: 'state.*validation.*(?:false|disabled|skip)'
+    flags: i
+- id: SAFE-T1007.signal.phishing_indicators
+  description: Detects patterns indicating OAuth phishing setup
+  heuristics:
+  - regex: 'authorization_endpoint\s*[:=]\s*[''"]https?://(?!accounts\.google|login\.microsoftonline|github\.com)'
+    flags: i
+  - pattern: 'fake_consent'
+  - pattern: 'clone_auth_page'
+  - regex: 'window\.open\s*\([^)]*auth'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

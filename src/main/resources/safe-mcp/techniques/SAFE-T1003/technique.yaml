@@ -1,26 +1,51 @@
 id: SAFE-T1003
-name: 'SAFE-T1003: Malicious MCP-Server Distribution'
-severity: high
-summary: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1003 **Severity**:
-  Critical **First Observed**: 2025-03-15 (First documented trojanized Docker images)
-  **Last Updated**: 2025-09-14'
-description: '**Tactic**: Initial Access (ATK-TA0001) **Technique ID**: SAFE-T1003
-  **Severity**: Critical **First Observed**: 2025-03-15 (First documented trojanized
-  Docker images) **Last Updated**: 2025-09-14'
-mitigations: []
+name: Malicious MCP-Server Distribution
+severity: P0
+summary: 'Trojanized MCP server packages distributed through registries or repositories'
+description: 'Malicious MCP-Server Distribution involves distributing trojanized MCP server implementations
+  through package registries (npm, PyPI, Docker Hub) or code repositories. These servers appear legitimate
+  but contain hidden malicious functionality such as data exfiltration, backdoors, or credential theft.'
+mitigations:
+- SAFE-M-2
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1003-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1003.signal.suspicious_postinstall
+  description: Detects suspicious post-install scripts that execute arbitrary code
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1003*'
-  - pattern: '*malicious*'
-  - pattern: '*distribution*'
-languages: []
+  - pattern: '"postinstall":'
+  - pattern: '"preinstall":'
+  - pattern: '"install":'
+  - regex: 'postinstall.*(?:curl|wget|node\s+-e|python\s+-c)'
+    flags: i
+  - regex: 'setup\.py.*(?:cmdclass|install_scripts)'
+    flags: i
+- id: SAFE-T1003.signal.obfuscated_code
+  description: Detects code obfuscation patterns common in trojanized packages
+  heuristics:
+  - pattern: 'Buffer.from('
+  - regex: 'atob\s*\(\s*[''"](?:[A-Za-z0-9+/]{20,})'
+  - regex: 'base64\.b64decode\s*\('
+  - regex: 'eval\s*\(\s*(?:atob|Buffer\.from|decode)'
+  - pattern: 'String.fromCharCode'
+  - regex: '\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}'
+    flags: i
+- id: SAFE-T1003.signal.hidden_network
+  description: Detects hidden network calls in server initialization
+  heuristics:
+  - regex: '(?:fetch|axios|requests|http)\s*(?:\.|\.get|\.post)\s*\([^)]*(?:pastebin|ngrok|requestbin|webhook\.site)'
+    flags: i
+  - regex: 'dns\.resolve.*TXT'
+    flags: i
+  - pattern: 'reverse_shell'
+  - pattern: 'reverse shell'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
