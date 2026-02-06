@@ -1,0 +1,44 @@
+namespace: js
+description: JavaScript and TypeScript specific patterns
+
+patterns:
+  # Shell execution patterns
+  child_process_exec:
+    description: Detects child_process.exec and execSync usage
+    heuristics:
+      - regex: 'child_process\.exec\s*\('
+      - regex: 'child_process\.execSync\s*\('
+      - regex: 'cp\.exec\s*\('
+      - regex: 'cp\.execSync\s*\('
+
+  spawn_with_shell:
+    description: Detects spawn with shell option enabled
+    heuristics:
+      - regex: 'spawn\s*\([^)]*shell\s*:\s*true'
+      - regex: 'spawnSync\s*\([^)]*shell\s*:\s*true'
+
+  # OAuth patterns (JS-specific)
+  location_hash_token:
+    description: Detects token extraction from URL hash (implicit flow)
+    heuristics:
+      - pattern: '#access_token='
+      - all_of:
+          - pattern: 'location.hash'
+          - regex: 'access[_-]?token'
+        window: 3
+        flags: i
+      - all_of:
+          - pattern: 'window.location.hash'
+          - regex: 'access[_-]?token'
+        window: 3
+        flags: i
+
+  # Template literal interpolation
+  template_interpolation_command:
+    description: Detects template literal interpolation in commands
+    heuristics:
+      - all_of:
+          - regex: '\$\{[^}]*(input|args|param|cmd|command)[^}]*\}'
+          - regex: '(execSync|exec|spawnSync|spawn)'
+        window: 3
+        flags: i

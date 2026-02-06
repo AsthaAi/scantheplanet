@@ -1,10 +1,307 @@
 namespace: common
-description: Common patterns
+description: Cross-language patterns applicable to multiple languages
+
 patterns:
-  secret_keywords:
-    description: Simple secret keyword patterns
+  # Database query patterns
+  db_query_direct:
+    description: Detects direct return of database query results
     heuristics:
-      - pattern: API_KEY
-      - pattern: SECRET
-      - pattern: TOKEN
-      - pattern: PASSWORD
+      - pattern: 'return db.query('
+      - pattern: 'return await db.query('
+      - pattern: 'return pool.query('
+      - pattern: 'return connection.query('
+      - pattern: 'return result.rows'
+      - regex: 'return\s+.*\.findMany\s*\('
+      - regex: 'return\s+.*\.findFirst\s*\('
+      - regex: 'return\s+.*executeQuery\s*\('
+
+  db_query_contextual:
+    description: Detects database queries near prompt/context
+    heuristics:
+      - all_of:
+          - regex: '(query|execute|findMany|findFirst|findUnique)\('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: '(supabase\.from|prisma\.)'
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+
+  # RAG/Vector store patterns
+  rag_query_contextual:
+    description: Detects RAG/vector store queries near prompt/context
+    heuristics:
+      - all_of:
+          - regex: '(vectorStore|embeddingStore|retriever)\.(query|search|retrieve)\('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: 'similarity[_-]?search\('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: '(pinecone|chromadb|qdrant|weaviate|milvus)\.(query|search|retrieve)'
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - pattern: 'getRelevantDocuments('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+
+  # Prompt concatenation patterns
+  prompt_concat:
+    description: Detects string concatenation into prompts
+    heuristics:
+      - regex: 'prompt\s*[+]?=\s*.*(content|text|data|result|body)'
+        flags: i
+      - regex: 'context\s*[+]?=\s*.*(content|text|data|result|body)'
+        flags: i
+      - regex: 'messages\.push\([^)]*content'
+        flags: i
+      - regex: 'prompt.*\$\{'
+      - regex: 'messages.*\$\{'
+      - regex: 'context.*\$\{'
+
+  # MCP tool response patterns
+  tool_response_contextual:
+    description: Detects MCP tool responses used in context
+    heuristics:
+      - all_of:
+          - regex: 'tool\.(call|execute|run)\('
+          - regex: '(prompt|messages|context)'
+        window: 4
+        flags: i
+      - all_of:
+          - pattern: 'mcp.call_tool'
+          - regex: '(prompt|messages|context)'
+        window: 4
+        flags: i
+
+  # Web scraping patterns (cross-language)
+  # web_scraping_direct is a superset; keep jsoup_direct/playwright_direct for legacy references.
+  jsoup_direct:
+    description: Detects Jsoup (Java) web scraping returns
+    heuristics:
+      - regex: 'return\s+.*Jsoup\.connect\s*\('
+
+  playwright_direct:
+    description: Detects Playwright/Puppeteer content returns
+    heuristics:
+      - regex: 'return\s+.*page\.content\s*\('
+      - regex: 'return\s+.*page\.evaluate\s*\('
+
+  web_scraping_direct:
+    description: Detects web scraping content returned directly (all languages)
+    heuristics:
+      - regex: 'return\s+.*cheerio\.load\s*\('
+      - regex: 'return\s+.*BeautifulSoup\s*\('
+      - regex: 'return\s+.*Jsoup\.connect\s*\('
+      - regex: 'return\s+.*page\.content\s*\('
+      - regex: 'return\s+.*page\.evaluate\s*\('
+      - regex: 'return\s+.*\.(?:innerText|innerHTML|textContent)'
+
+  json_parse_external:
+    description: Detects JSON parsing of external data (all languages)
+    heuristics:
+      # JavaScript/TypeScript
+      - pattern: 'JSON.parse(response'
+      - pattern: 'JSON.parse(body'
+      - pattern: 'JSON.parse(data'
+      # Python
+      - pattern: 'json.loads(response'
+      - pattern: 'json.loads(data'
+      - pattern: 'json.load(f'
+      # Go
+      - pattern: 'json.Unmarshal('
+      - pattern: 'json.NewDecoder('
+      - regex: 'json\.NewDecoder\([^)]*\)\.Decode\('
+      # Rust
+      - pattern: 'serde_json::from_str('
+      - pattern: 'serde_json::from_slice('
+      # Java
+      - pattern: 'ObjectMapper.readValue('
+      - pattern: 'Gson.fromJson('
+
+  http_direct_return:
+    description: Detects direct return of HTTP responses (all languages)
+    heuristics:
+      # JavaScript/TypeScript
+      - pattern: 'return fetch('
+      - pattern: 'return await fetch('
+      - pattern: 'return axios.'
+      - pattern: 'return await axios.'
+      - pattern: 'return response.data'
+      - pattern: 'return response.json()'
+      - pattern: 'return response.text()'
+      - pattern: 'return res.json()'
+      # Python
+      - pattern: 'return requests.get('
+      - pattern: 'return requests.post('
+      # Go
+      - pattern: 'return http.Get('
+      - pattern: 'return client.Do('
+      - pattern: 'return ioutil.ReadAll('
+      # Rust
+      - pattern: 'return reqwest::get('
+      - pattern: 'return client.get('
+      - regex: 'return\s+.*\.(get|post|put|delete|head|request)\s*\([^)]*\)\.send\s*\('
+      # Java
+      - pattern: 'return HttpClient.send('
+      - pattern: 'return okhttp3.OkHttpClient'
+      - pattern: 'return RestTemplate.getForObject('
+
+  file_read_direct:
+    description: Detects direct return of file contents (all languages)
+    heuristics:
+      # JavaScript/TypeScript
+      - pattern: 'return fs.readFile'
+      - pattern: 'return readFileSync('
+      - pattern: 'return await readFile('
+      # Python
+      - pattern: 'return file.read()'
+      - pattern: 'return f.read()'
+      - regex: 'return\s+open\([^)]*\)\.read\s*\('
+      - regex: 'return\s+\w+\.read_text\s*\('
+      # Go
+      - regex: 'return\s+(?:\w+\.)*ioutil\.ReadFile\s*\('
+      - regex: 'return\s+(?:\w+\.)*os\.ReadFile\s*\('
+      # Rust
+      - regex: 'return\s+(?:\w+::)*fs::read_to_string\s*\('
+      - regex: 'return\s+(?:\w+::)*fs::read\s*\('
+      # Java
+      - regex: 'return\s+Files\.readString\s*\('
+      - regex: 'return\s+Files\.readAllLines\s*\('
+
+  # OAuth misconfiguration patterns
+  oauth_implicit_flow:
+    description: Detects OAuth implicit flow configuration
+    # Keep literal patterns for fast exact matches; regexes cover flexible formatting.
+    heuristics:
+      - pattern: 'response_type=token'
+      - pattern: 'response_type: token'
+      - pattern: "response_type: 'token'"
+      - pattern: 'response_type: "token"'
+      - pattern: 'grant_type=implicit'
+      - pattern: 'implicit_grant'
+      - pattern: 'implicitGrant'
+      - pattern: 'ImplicitGrant'
+      - regex: "response_type\\s*[=:]\\s*[\"'`]?token[\"'`]?"
+        flags: i
+      - regex: "grant_type\\s*[=:]\\s*[\"'`]?implicit[\"'`]?"
+        flags: i
+      - regex: 'implicit.*flow'
+        flags: i
+      - regex: 'allow.*implicit'
+        flags: i
+
+  # Shell operator patterns (dangerous in any language)
+  shell_operators:
+    description: Detects shell metacharacters and operators
+    heuristics:
+      - pattern: '; rm '
+      - pattern: '; cat '
+      - pattern: '; wget '
+      - pattern: '; curl '
+      - pattern: '&& rm '
+      - pattern: '&& cat '
+      - pattern: '|| rm '
+      - pattern: '| bash'
+      - pattern: '| sh'
+      - pattern: '$('
+      - regex: "[\"'][^\"']*;\\s*\\w+[^\"']*[\"']"
+      - regex: "[\"'][^\"']*\\|\\s*\\w+[^\"']*[\"']"
+      - regex: '`[^`]*(?:;|\|\||\||&&)[^`]*`'
+
+  # String concatenation in commands
+  string_concat_command:
+    description: Detects string concatenation in command construction
+    heuristics:
+      - all_of:
+          - regex: '\+\s*(input|args|params|process\.argv)'
+          - regex: '(execSync|exec|spawnSync|spawn|Command::new|exec\.Command|subprocess\.)'
+        window: 3
+        flags: i
+
+  java_file_read_contextual:
+    description: Detects Java file reads near prompt/context
+    heuristics:
+      - all_of:
+          - regex: '(Files\.readString|Files\.readAllLines|Source\.fromFile)\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+
+  # Cross-language contextual patterns for indirect injection
+  file_read_contextual:
+    description: Detects file reads near prompt/context (all languages)
+    heuristics:
+      # JavaScript/TypeScript, Java, Scala
+      - all_of:
+          - regex: '(readFileSync|readFile|Files\.readString|Files\.readAllLines|Source\.fromFile)\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+      # Python
+      - all_of:
+          - regex: 'Path\.read_text\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+      # Go
+      - all_of:
+          - regex: '(ioutil\.ReadFile|os\.ReadFile|io\.ReadAll)\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+      # Rust
+      - all_of:
+          - regex: '(std::fs::read_to_string|tokio::fs::read_to_string)\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+      # Python open().read()
+      - all_of:
+          - regex: 'open\([^)]*\)\.read\('
+          - regex: '(prompt|messages|context|system)'
+        window: 4
+        flags: i
+
+  web_content_contextual:
+    description: Detects web fetching/scraping near prompt/context (all languages)
+    heuristics:
+      - all_of:
+          - regex: '(fetch|axios\.get|axios\.post|requests\.get|requests\.post|OkHttpClient|http\.Get|http\.Client|ioutil\.ReadAll|reqwest::get|reqwest::Client)'
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: '(BeautifulSoup|cheerio\.load|Jsoup\.connect|scraper::(Html|Selector))'
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+
+  db_query_contextual_extended:
+    description: Detects database queries near prompt/context (extended with Java)
+    # Superset of db_query_contextual plus Java query APIs for convenience.
+    heuristics:
+      - all_of:
+          - regex: '(query|execute|findMany|findFirst|findUnique)\('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: '(supabase\.from|prisma\.)'
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
+      - all_of:
+          - regex: '(executeQuery|getResultList)\('
+          - regex: '(prompt|messages|context)'
+        window: 6
+        flags: i
