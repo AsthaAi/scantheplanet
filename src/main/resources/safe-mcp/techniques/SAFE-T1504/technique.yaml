@@ -1,31 +1,54 @@
 id: SAFE-T1504
-name: 'SAFE-T1504: Token Theft via API Response'
-severity: high
-summary: |-
-  Token theft via API response when secrets or auth tokens from upstream APIs are
-  returned to the user or LLM.
-description: |-
-  Tactic: Credential Access (ATK-TA0006). Technique: SAFE-T1504. Severity: high.
-  Detection guidance:
-  - Require that upstream API responses containing access tokens, API keys, or secrets
-    are forwarded to user-visible output or tool responses.
-  - Identify the code path that returns the sensitive field (for example, access_token).
-  Exclusions:
-  - Do not flag generic API JSON responses that do not include secrets.
-mitigations: []
+name: Token Theft via API Response
+severity: P1
+summary: 'Access or refresh tokens leaked in tool output or API responses'
+description: 'Token Theft via API Response occurs when MCP tool implementations inadvertently include
+  access tokens, refresh tokens, or other credentials in their output responses. These leaked tokens
+  are then visible in conversation history, logs, or can be captured by other tools in the chain
+  for unauthorized access.'
+mitigations:
+- SAFE-M-6
+- SAFE-M-10
 code_signals:
-- id: SAFE-T1504-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1504.signal.token_in_response
+  description: Detects tokens or credentials included in tool responses
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1504*'
-  - pattern: '*theft*'
-  - pattern: '*response*'
-languages: []
+  - regex: 'return.*(?:access_token|refresh_token|api_key|secret_key|bearer)'
+    flags: i
+  - regex: 'response.*(?:access_token|refresh_token|api_key|bearer|authorization)'
+    flags: i
+  - regex: 'result\[.(?:token|credential|secret|key|auth).\]'
+    flags: i
+  - regex: 'output.*(?:password|secret|token|credential)'
+    flags: i
+- id: SAFE-T1504.signal.credential_logging
+  description: Detects credentials being logged or printed
+  heuristics:
+  - regex: '(?:console\.log|print|logger\.\w+|log\.\w+)\s*\(.*(?:token|password|secret|credential|api_key|bearer)'
+    flags: i
+  - regex: '(?:debug|info|warn|error)\s*\(.*(?:access_token|refresh_token|auth_header)'
+    flags: i
+  - regex: 'JSON\.stringify.*(?:auth|credential|token|secret)'
+    flags: i
+- id: SAFE-T1504.signal.missing_redaction
+  description: Detects missing redaction of sensitive fields in output
+  heuristics:
+  - regex: 'serialize.*(?:include|expose).*(?:token|password|secret)'
+    flags: i
+  - regex: 'to_dict.*(?:token|password|secret|credential)'
+    flags: i
+  - regex: 'redact.*(?:false|disable|skip|none)'
+    flags: i
+  - pattern: 'expose_secrets: true'
+  - pattern: 'mask_credentials: false'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

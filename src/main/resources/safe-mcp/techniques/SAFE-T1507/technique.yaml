@@ -1,20 +1,53 @@
 id: SAFE-T1507
-name: 'SAFE-T1507: Authorization Code Interception'
-severity: medium
-summary: 'SAFE-T1507: Authorization Code Interception'
-description: 'SAFE-T1507: Authorization Code Interception. Man-in-the-browser or redirect manipulation steals OAuth authorization codes during the redirect flow and attempts to exchange them at the token endpoint.'
-mitigations: []
+name: Authorization Code Interception
+severity: P0
+summary: 'OAuth authorization codes intercepted through logging, redirect manipulation, or missing PKCE'
+description: 'Authorization Code Interception captures OAuth authorization codes during the OAuth flow.
+  Attackers exploit missing PKCE (Proof Key for Code Exchange), log authorization codes, manipulate
+  redirect URIs, or intercept codes in transit to exchange them for access tokens before the
+  legitimate client can.'
+mitigations:
+- SAFE-M-10
+- SAFE-M-11
 code_signals:
-- id: SAFE-T1507-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1507.signal.auth_code_logging
+  description: Detects authorization code logging or exposure
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1507*'
-languages: []
+  - regex: '(?:console\.log|print|logger|log)\s*\(.*(?:auth.*code|authorization_code|code=)'
+    flags: i
+  - regex: '(?:debug|info|trace)\s*\(.*(?:code|grant).*(?:received|exchange)'
+    flags: i
+  - regex: 'params\[.code.\].*(?:log|print|write|save)'
+    flags: i
+- id: SAFE-T1507.signal.missing_pkce
+  description: Detects OAuth flows without PKCE protection
+  heuristics:
+  - regex: 'grant_type\s*[:=]\s*[''"]authorization_code[''"](?!.*code_verifier)'
+  - regex: 'code_challenge.*(?:skip|disable|false|none)'
+    flags: i
+  - pattern: 'pkce: false'
+  - pattern: 'usePKCE: false'
+  - pattern: 'skip_pkce'
+  - regex: 'response_type\s*[:=]\s*[''"]code[''"](?!.*code_challenge)'
+- id: SAFE-T1507.signal.redirect_manipulation
+  description: Detects redirect URI manipulation for code interception
+  heuristics:
+  - regex: 'redirect_uri\s*[:=]\s*(?:req\.|request\.|params\.|query\.)'
+    flags: i
+  - regex: 'callback.*url\s*[:=]\s*(?:req\.|request\.|params\.)'
+    flags: i
+  - regex: 'redirect.*(?:whitelist|allowlist).*(?:false|disable|\[\])'
+    flags: i
+  - pattern: 'validate_redirect: false'
+  - pattern: 'strict_redirect: false'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

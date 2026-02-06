@@ -1,27 +1,61 @@
 id: SAFE-T1502
-name: 'SAFE-T1502: File-Based Credential Harvest'
-severity: high
-summary: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1502
-  **Severity**: High **First Observed**: Mid-September 2025 (GTG-1002 Campaign) **Last
-  Updated**: 2025-11-14'
-description: '**Tactic**: Credential Access (ATK-TA0006) **Technique ID**: SAFE-T1502
-  **Severity**: High **First Observed**: Mid-September 2025 (GTG-1002 Campaign) **Last
-  Updated**: 2025-11-14'
-mitigations: []
+name: File-Based Credential Harvest
+severity: P0
+summary: 'MCP tools read sensitive credential files like SSH keys, AWS credentials, or .env'
+description: 'File-Based Credential Harvest occurs when MCP server tools read sensitive credential
+  files from the host filesystem. Targets include SSH private keys, AWS credentials, environment
+  files, browser cookies, keychain databases, and cloud provider configurations. The harvested
+  credentials enable lateral movement and privilege escalation.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1502-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1502.signal.ssh_key_access
+  description: Detects access to SSH key files
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1502*'
-  - pattern: '*file*'
-  - pattern: '*based*'
-  - pattern: '*credential*'
-languages: []
+  - regex: '\.ssh/(?:id_rsa|id_ed25519|id_ecdsa|id_dsa|authorized_keys|known_hosts|config)'
+  - regex: 'readFile.*\.ssh'
+    flags: i
+  - regex: 'open\s*\(.*\.ssh/'
+    flags: i
+  - pattern: 'SSH_KEY'
+  - pattern: 'ssh_private_key'
+- id: SAFE-T1502.signal.cloud_creds
+  description: Detects access to cloud provider credential files
+  heuristics:
+  - pattern: '.aws/credentials'
+  - pattern: '.aws/config'
+  - pattern: '.azure/credentials'
+  - regex: '\.config/gcloud/(?:credentials|application_default_credentials)'
+  - pattern: '.kube/config'
+  - pattern: '.docker/config.json'
+  - pattern: '.npmrc'
+  - pattern: '.pypirc'
+- id: SAFE-T1502.signal.env_and_secrets
+  description: Detects access to environment and secret files
+  heuristics:
+  - regex: 'readFile.*\.env'
+    flags: i
+  - regex: 'open\s*\(.*\.env'
+    flags: i
+  - pattern: '.env.local'
+  - pattern: '.env.production'
+  - regex: '(?:credentials|secrets)\.(?:json|yaml|yml|toml)'
+    flags: i
+  - pattern: 'keychain'
+  - regex: 'Keychain.*(?:find|dump|export)'
+    flags: i
+  - pattern: 'gnome-keyring'
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
