@@ -1,27 +1,57 @@
 id: SAFE-T1403
-name: 'SAFE-T1403: Consent-Fatigue Exploit'
-severity: high
-summary: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1403 **Severity**:
-  High **First Observed**: Observed in production (MFA fatigue attacks 2022+, MCP
-  context 2025) **Last Updated**: 2025-11-16'
-description: '**Tactic**: Defense Evasion (ATK-TA0005) **Technique ID**: SAFE-T1403
-  **Severity**: High **First Observed**: Observed in production (MFA fatigue attacks
-  2022+, MCP context 2025) **Last Updated**: 2025-11-16'
-mitigations: []
+name: Consent-Fatigue Exploit
+severity: P1
+summary: 'Rapid or repeated permission requests exploit user fatigue to gain unauthorized approvals'
+description: 'Consent-Fatigue Exploit overwhelms users with rapid, repeated, or batched permission
+  requests to exploit decision fatigue. Users begin auto-approving prompts without reading them,
+  allowing malicious tools to gain permissions they would normally be denied. This also includes
+  auto-approve patterns that bypass user consent entirely.'
+mitigations:
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1403-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1403.signal.auto_approve
+  description: Detects auto-approval patterns that bypass user consent
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1403*'
-  - pattern: '*consent*'
-  - pattern: '*fatigue*'
-  - pattern: '*exploit*'
-languages: []
+  - pattern: 'auto_approve: true'
+  - pattern: 'autoApprove: true'
+  - pattern: 'skip_confirmation'
+  - pattern: 'skipConfirmation'
+  - regex: 'confirm.*(?:false|skip|auto|bypass|disable)'
+    flags: i
+  - regex: 'prompt_user.*(?:false|never|skip)'
+    flags: i
+  - pattern: '--yes'
+  - pattern: '-y'
+- id: SAFE-T1403.signal.batch_consent
+  description: Detects batch or bulk permission request patterns
+  heuristics:
+  - regex: 'requestPermissions?\s*\(\s*\[.*,.*,.*\]'
+    flags: i
+  - regex: 'permissions.*(?:bulk|batch|all)'
+    flags: i
+  - regex: 'grantAll\s*\('
+    flags: i
+  - pattern: 'accept_all_permissions'
+  - pattern: 'blanket_approval'
+- id: SAFE-T1403.signal.rapid_requests
+  description: Detects rapid sequential permission requests
+  heuristics:
+  - regex: 'for\s*\(.*requestPermission'
+    flags: i
+  - regex: 'forEach.*requestPermission'
+    flags: i
+  - regex: 'map\s*\(.*(?:approve|confirm|grant)'
+    flags: i
+  - regex: 'Promise\.all\s*\(.*(?:permission|approve|consent)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
