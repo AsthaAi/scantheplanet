@@ -1,27 +1,52 @@
 id: SAFE-T1103
-name: 'SAFE-T1103: Fake Tool Invocation (Function Spoofing)'
-severity: critical
-summary: '**Technique ID:** SAFE-T1103 **Technique Name:** Fake Tool Invocation (Function
-  Spoofing) **Tactic:** Execution (ATK-TA0002) **MITRE ATT&CK Mapping:** [T1574 -
-  Hijack Execution…'
-description: '**Technique ID:** SAFE-T1103 **Technique Name:** Fake Tool Invocation
-  (Function Spoofing) **Tactic:** Execution (ATK-TA0002) **MITRE ATT&CK Mapping:**
-  [T1574 - Hijack Execution…'
-mitigations: []
+name: Fake Tool Invocation
+severity: P0
+summary: 'Function name spoofing or tool impersonation to execute unauthorized operations'
+description: 'Fake Tool Invocation exploits insufficient tool validation in MCP hosts by injecting
+  or spoofing tool names, duplicating tool registrations, or manipulating the JSON-RPC tool call
+  protocol. Attackers can redirect legitimate tool calls to malicious implementations or register
+  tools that shadow trusted ones.'
+mitigations:
+- SAFE-M-1
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1103-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1103.signal.tool_name_spoofing
+  description: Detects tool name manipulation or collision patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1103*'
-  - pattern: '*fake*'
-  - pattern: '*invocation*'
-  - pattern: '*function*'
-languages: []
+  - regex: 'tool_name\s*[:=]\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'registerTool\s*\(\s*[^)]*(?:override|replace|shadow)'
+    flags: i
+  - regex: 'tools\.(?:set|register|add)\s*\([^)]*(?:existing|override)'
+    flags: i
+  - pattern: 'tool_override'
+  - pattern: 'shadow_tool'
+  - pattern: 'replace_tool'
+- id: SAFE-T1103.signal.jsonrpc_manipulation
+  description: Detects JSON-RPC tool call protocol manipulation
+  heuristics:
+  - regex: 'method\s*[:=]\s*[''"]tools/call[''"]'
+  - regex: 'JSON\.parse\s*\(.*method'
+    flags: i
+  - pattern: 'tools/call'
+  - regex: 'jsonrpc.*method.*(?:override|inject|spoof)'
+    flags: i
+- id: SAFE-T1103.signal.duplicate_registration
+  description: Detects duplicate tool registration that could enable shadowing
+  heuristics:
+  - regex: 'addTool\s*\(.*(?:name|id)\s*[:=]'
+    flags: i
+  - regex: 'server\.tool\s*\(\s*[''"]'
+  - pattern: 'tool_registry'
+  - regex: 'tools\[.*\]\s*=\s*(?:function|async|\()'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

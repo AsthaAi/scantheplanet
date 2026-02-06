@@ -1,26 +1,61 @@
 id: SAFE-T1111
-name: 'SAFE-T1111: AI Agent CLI Weaponization'
-severity: critical
-summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1111 **Severity**:
-  Critical **First Observed**: August 2025 (Nx malicious package incident) **Last
-  Updated**: 2025-08-27'
-description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1111 **Severity**:
-  Critical **First Observed**: August 2025 (Nx malicious package incident) **Last
-  Updated**: 2025-08-27'
-mitigations: []
+name: AI Agent CLI Weaponization
+severity: P0
+summary: 'AI CLI tools weaponized to execute arbitrary commands or exfiltrate data'
+description: 'AI Agent CLI Weaponization exploits AI-powered CLI tools and agents that have unrestricted
+  shell access or use dangerous permission-bypass flags. Attackers distribute malicious packages with
+  postinstall scripts that invoke AI CLI tools in unsafe modes, or craft inputs that cause agents
+  to execute arbitrary system commands, harvest credentials, or exfiltrate repository data.'
+mitigations:
+- SAFE-M-2
+- SAFE-M-3
 code_signals:
-- id: SAFE-T1111-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1111.signal.dangerous_flags
+  description: Detects dangerous AI CLI permission-bypass flags
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1111*'
-  - pattern: '*agent*'
-  - pattern: '*weaponization*'
-languages: []
+  - pattern: '--dangerously-skip-permissions'
+  - pattern: '--yolo'
+  - pattern: '--trust-all-tools'
+  - pattern: '--no-verify'
+  - pattern: '--allowedTools *'
+  - regex: '--(?:skip|bypass|disable)-(?:permissions|safety|sandbox)'
+    flags: i
+  - pattern: 'CLAUDE_DANGEROUS_SKIP_PERMISSIONS'
+- id: SAFE-T1111.signal.shell_exec
+  description: Detects unrestricted shell execution in agent context
+  heuristics:
+  - regex: 'child_process\.exec\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'subprocess\.(?:run|call|Popen)\s*\(\s*(?:req|request|params|input|cmd)'
+    flags: i
+  - regex: 'os\.system\s*\(\s*(?:req|request|params|input)'
+    flags: i
+  - regex: 'execSync\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - pattern: 'shell=True'
+  - regex: 'spawn\s*\(\s*[''"](?:bash|sh|cmd|powershell)'
+    flags: i
+- id: SAFE-T1111.signal.credential_harvest
+  description: Detects credential harvesting patterns in agent context
+  heuristics:
+  - regex: 'git\s+config\s+--(?:global|system)\s+(?:user|credential)'
+    flags: i
+  - regex: '(?:cat|type)\s+.*(?:\.ssh|\.aws|\.env|credentials)'
+    flags: i
+  - regex: 'gh\s+auth\s+(?:token|status)'
+    flags: i
+  - regex: 'npm\s+(?:token|whoami)'
+    flags: i
+  - pattern: 'GITHUB_TOKEN'
+  - pattern: 'NPM_TOKEN'
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

@@ -1,24 +1,56 @@
 id: SAFE-T1104
-name: 'SAFE-T1104: Over-Privileged Tool Abuse'
-severity: high
-summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1104 **Severity**:
-  High **First Observed**: March 2024 (Theoretical research on MCP privilege models)
-  **Last Updated**: 2025-01-15'
-description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1104 **Severity**:
-  High **First Observed**: March 2024 (Theoretical research on MCP privilege models)
-  **Last Updated**: 2025-01-15'
-mitigations: []
+name: Over-Privileged Tool Abuse
+severity: P1
+summary: 'Tools granted excessive permissions beyond their intended scope'
+description: 'Over-Privileged Tool Abuse occurs when MCP tools are granted permissions far exceeding
+  their functional requirements. Attackers exploit these over-privileged tools through prompt injection
+  or direct manipulation to access sensitive resources, execute system commands, or escalate privileges
+  beyond the intended scope.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1104-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1104.signal.admin_access
+  description: Detects tools with administrative or root-level access patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1104*'
-languages: []
+  - regex: 'sudo\s+'
+  - pattern: 'runAsAdmin'
+  - pattern: 'run_as_root'
+  - regex: 'chmod\s+[0-7]*7[0-7]*'
+  - pattern: 'setuid'
+  - regex: 'capabilities.*(?:ALL|SYS_ADMIN|NET_ADMIN)'
+    flags: i
+  - pattern: 'privileged: true'
+- id: SAFE-T1104.signal.unrestricted_fs
+  description: Detects unrestricted filesystem access in tool implementations
+  heuristics:
+  - regex: 'fs\.\w+Sync?\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'open\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - pattern: 'allowedPaths: ["*"]'
+  - pattern: "allowedPaths: ['*']"
+  - regex: 'base_dir\s*[:=]\s*[''"]/'
+- id: SAFE-T1104.signal.excessive_api_perms
+  description: Detects excessive API permission grants
+  heuristics:
+  - regex: 'scope.*(?:\*|all|admin|root)'
+    flags: i
+  - regex: 'permissions?\s*[:=]\s*\[?\s*[''"]?\*'
+    flags: i
+  - pattern: 'full_access'
+  - pattern: 'unrestricted'
+  - regex: 'role\s*[:=]\s*[''"](?:admin|superuser|root)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

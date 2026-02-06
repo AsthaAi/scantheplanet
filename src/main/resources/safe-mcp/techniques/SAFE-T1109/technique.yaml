@@ -1,24 +1,53 @@
 id: SAFE-T1109
-name: 'SAFE-T1109: Debugging Tool Exploitation'
-severity: high
-summary: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1109 **Severity**:
-  Critical **First Observed**: June 2025 (CVE-2025-49596) **Last Updated**: 2025-01-09'
-description: '**Tactic**: Execution (ATK-TA0002) **Technique ID**: SAFE-T1109 **Severity**:
-  Critical **First Observed**: June 2025 (CVE-2025-49596) **Last Updated**: 2025-01-09'
-mitigations: []
+name: Debugging Tool Exploitation
+severity: P0
+summary: 'Debug endpoints or inspector tools exposed in production enable remote code execution'
+description: 'Debugging Tool Exploitation targets MCP debugging and inspection tools left enabled in
+  production environments. Attackers exploit vulnerabilities like CSRF and DNS rebinding in tools
+  such as MCP Inspector (CVE-2025-49596) to achieve remote code execution through SSE endpoints,
+  debug ports, or eval-in-debug-context patterns.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1109-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1109.signal.debug_endpoints
+  description: Detects debug endpoints exposed in production
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1109*'
-  - pattern: '*debugging*'
-  - pattern: '*exploitation*'
-languages: []
+  - regex: '(?:app|router|server)\.(?:get|post|use)\s*\(\s*[''"].*(?:/debug|/inspect|/_debug|/__debug)'
+    flags: i
+  - pattern: 'NODE_DEBUG'
+  - pattern: 'DEBUG=true'
+  - pattern: 'debug: true'
+  - regex: 'listen\s*\(\s*(?:6277|9229|5858)\s*\)'
+- id: SAFE-T1109.signal.debugger_attach
+  description: Detects debugger attachment and inspection patterns
+  heuristics:
+  - pattern: '--inspect'
+  - pattern: '--inspect-brk'
+  - pattern: '--debug-port'
+  - regex: 'chrome-devtools://devtools'
+  - pattern: 'debugger;'
+  - regex: 'process\._debugProcess\s*\('
+  - regex: 'import\s+(?:pdb|ipdb|debugpy)'
+- id: SAFE-T1109.signal.eval_in_debug
+  description: Detects eval or exec in debug context
+  heuristics:
+  - regex: 'eval\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'exec\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'vm\.runInContext\s*\('
+  - regex: 'vm\.runInNewContext\s*\('
+  - pattern: 'new Function('
+  - pattern: 'compile('
+languages:
+- typescript
+- javascript
+- python
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

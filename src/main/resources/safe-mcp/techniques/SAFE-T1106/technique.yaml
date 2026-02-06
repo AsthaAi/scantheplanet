@@ -1,31 +1,57 @@
 id: SAFE-T1106
-name: 'SAFE-T1106: Autonomous Loop Exploit'
-severity: high
-summary: |-
-  Autonomous loop exploit when tools or agents can self-trigger or recurse without
-  termination conditions or rate limits.
-description: |-
-  Tactic: Execution (ATK-TA0002). Technique: SAFE-T1106. Severity: high.
-  Detection guidance:
-  - Require evidence of unbounded or self-triggering loops (recursive tool calls,
-    while-true loops, background schedulers) that can be influenced by untrusted input.
-  - Identify missing termination, rate limiting, or budget enforcement.
-  Exclusions:
-  - Do not flag bounded iteration over a fixed result set or loops with explicit limits.
-mitigations: []
+name: Autonomous Loop Exploit
+severity: P1
+summary: 'Unbounded recursive or self-triggering tool invocations without termination conditions'
+description: 'Autonomous Loop Exploit triggers denial-of-service through self-reinforcing tool invocation
+  loops. Attackers craft prompts or tool outputs that suggest non-terminal progress, causing agents
+  to repeatedly invoke tools without convergence checks, rate limits, or iteration budgets.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1106-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1106.signal.infinite_loops
+  description: Detects unbounded loop patterns that could be exploited
   heuristics:
-  - regex: '(?i)\bwhile\s+true\b'
-  - regex: '(?i)\bfor\s*\(\s*;\s*;\s*\)'
-  - regex: '(?i)\bsetInterval\b|\bsetTimeout\b'
-  - regex: '(?i)\bloop\s*\{'
-languages: []
+  - regex: 'while\s*\(\s*true\s*\)'
+    flags: i
+  - regex: 'while\s+True\s*:'
+  - regex: 'for\s*\(\s*;\s*;\s*\)'
+  - regex: 'loop\s*\{'
+  - pattern: 'while (1)'
+  - pattern: 'while(1)'
+- id: SAFE-T1106.signal.recursive_tool_calls
+  description: Detects recursive tool invocation without termination
+  heuristics:
+  - regex: 'callTool\s*\(.*callTool'
+    flags: i
+  - regex: 'invoke_tool\s*\(.*invoke_tool'
+    flags: i
+  - regex: 'execute\s*\(.*execute\s*\('
+    flags: i
+  - pattern: 'self.run('
+  - regex: 'agent\.(?:run|execute|invoke)\s*\('
+    flags: i
+- id: SAFE-T1106.signal.missing_rate_limits
+  description: Detects scheduled or interval-based execution without rate limiting
+  heuristics:
+  - regex: 'setInterval\s*\(\s*(?:async\s*)?\(\s*\)\s*=>'
+  - regex: 'setInterval\s*\(\s*function'
+  - regex: 'setTimeout\s*\(.*setTimeout'
+    flags: i
+  - pattern: 'schedule.every'
+  - regex: 'cron\s*\(\s*[''"]'
+  - regex: 'while.*(?:await|yield)\s+(?:sleep|delay)\s*\(\s*0\s*\)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- rust
+- go
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true

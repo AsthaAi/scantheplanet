@@ -1,32 +1,59 @@
 id: SAFE-T1105
-name: 'SAFE-T1105: Path Traversal via File Tool'
-severity: high
-summary: |-
-  Path traversal via file tool when untrusted input controls local filesystem paths
-  without normalization, allowlisting, or sandboxing.
-description: |-
-  Tactic: Execution (ATK-TA0002). Technique: SAFE-T1105. Severity: high.
-  Detection guidance:
-  - Require a local file read/write/delete where the path comes from untrusted input.
-  - Identify missing normalization or allowlist checks (e.g., no Path.resolve, no
-    base directory enforcement, no path sanitization).
-  Exclusions:
-  - Do not flag network URL fetches or HTTP requests that do not access the local filesystem.
-mitigations: []
+name: Path Traversal via File Tool
+severity: P1
+summary: 'Untrusted input controls filesystem paths without normalization or sandboxing'
+description: 'Path Traversal via File Tool occurs when MCP file-handling tools accept untrusted input
+  as filesystem paths without proper normalization, allowlisting, or base directory enforcement.
+  Attackers can use relative path sequences, Unicode normalization tricks, double encoding, or null
+  byte injection to access files outside the intended directory.'
+mitigations:
+- SAFE-M-3
+- SAFE-M-6
 code_signals:
-- id: SAFE-T1105-signal-1
-  description: Potential indicators for this technique in code or configuration.
+- id: SAFE-T1105.signal.path_traversal
+  description: Detects path traversal sequences and patterns
   heuristics:
-  - pattern: '*safe*'
-  - pattern: '*t1105*'
-  - pattern: '*path*'
-  - pattern: '*traversal*'
-  - pattern: '*file*'
-languages: []
+  - pattern: '../'
+  - pattern: '..\\'
+  - regex: '(?:%2e%2e|%252e%252e|\.%2e|%2e\.)[/\\]'
+    flags: i
+  - regex: '(?:%00|\\x00|\\0)'
+  - pattern: '..%c0%af'
+  - pattern: '..%ef%bc%8f'
+- id: SAFE-T1105.signal.unsanitized_path_join
+  description: Detects path.join or path concatenation with untrusted input
+  heuristics:
+  - regex: 'path\.join\s*\([^)]*(?:req\.|request\.|params\.|input\.|query\.)'
+    flags: i
+  - regex: 'os\.path\.join\s*\([^)]*(?:req|request|params|input)'
+    flags: i
+  - regex: 'filepath\.Join\s*\([^)]*(?:req|request|params|input)'
+    flags: i
+  - regex: '[''"`]\s*\+\s*(?:req\.|request\.|params\.).*(?:path|file|dir)'
+    flags: i
+- id: SAFE-T1105.signal.missing_normalization
+  description: Detects file operations without path normalization or base directory checks
+  heuristics:
+  - regex: 'readFile(?:Sync)?\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'writeFile(?:Sync)?\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'open\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'unlink(?:Sync)?\s*\(\s*(?:req\.|request\.|params\.|input\.)'
+    flags: i
+  - regex: 'os\.remove\s*\(\s*(?:req|request|params|input)'
+    flags: i
+languages:
+- typescript
+- javascript
+- python
+- go
+- rust
 output_schema:
   requires_mitigations: false
   allowed_status_values:
   - pass
   - fail
+  - partial
   - unknown
-llm_required: true
